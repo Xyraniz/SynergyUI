@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 
-ROOT = Path('/home/ubuntu/SynergyUI')
+ROOT = Path(__file__).resolve().parent
 OUT = ROOT / 'web' / 'icons.json'
 
 def parse_lua_table(path: Path):
