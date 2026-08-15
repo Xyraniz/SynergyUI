@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Documentación completa de SynergyUI, una biblioteca de interfaces Roblox en Lua.">
+  <title>SynergyUI · Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="home">
+<a class="skip-link" href="#main-content">Saltar al contenido</a>
+<div class="site-shell">
+  <aside class="sidebar" aria-label="Navegación de documentación">
+    <div class="brand"><div class="brand-mark">S</div><div><span class="brand-name">SynergyUI</span><span class="brand-sub">Lua UI system</span></div></div>
+    <div class="nav-label">Start here</div>
+    <a class="nav-link" data-page="home" href="index.html"><span>Overview</span><span class="nav-kicker">01</span></a>
+    <a class="nav-link" data-page="examples" href="examples.html"><span>Quickstart</span><span class="nav-kicker">02</span></a>
+    <div class="nav-label">Reference</div>
+    <a class="nav-link" data-page="api" href="api.html"><span>Global API</span><span class="nav-kicker">03</span></a>
+    <a class="nav-link" data-page="components" href="components.html"><span>Components</span><span class="nav-kicker">04</span></a>
+    <a class="nav-link" data-page="themes" href="themes.html"><span>Themes</span><span class="nav-kicker">05</span></a>
+    <a class="nav-link" data-page="icons" href="icons.html"><span>Icon catalog</span><span class="nav-kicker">06</span></a>
+    <a class="nav-link" data-page="localization" href="localization.html"><span>Localization</span><span class="nav-kicker">07</span></a>
+    <a class="nav-link" data-page="reference" href="reference.html"><span>Runtime notes</span><span class="nav-kicker">08</span></a>
+    <div class="sidebar-footer">Repository reference<span><code>dist/main.lua</code><br>plus six icon catalogs<br>at repository HEAD.</span></div>
+  </aside>
+  <main class="main" id="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" data-menu-toggle aria-label="Abrir navegación" aria-expanded="false">☰</button>
+      <div class="breadcrumb">docs / <strong>overview</strong></div>
+      <div class="top-actions"><div class="search-wrap"><label class="search-box" aria-label="Buscar en la documentación"><span aria-hidden="true">⌕</span><input data-global-search type="search" placeholder="Search docs…" autocomplete="off"><span class="shortcut">⌘K</span></label><div class="search-results" data-search-results></div></div></div>
+    </header>
+    <div class="page">
+      <section class="hero search-target" id="overview" data-search-title="Overview · SynergyUI" data-search-text="Qué es SynergyUI, instalación, ventanas, tabs, controles, temas e iconos.">
+        <div>
+          <span class="eyebrow">Roblox Lua · API-first</span>
+          <h1>Build the UI.<br><span class="outline">Keep the flow.</span></h1>
+          <p class="lede">SynergyUI convierte una tabla de configuración y unas pocas llamadas Lua en una interfaz completa: ventanas arrastrables, tabs, flags persistentes, temas, diálogos, notificaciones e iconos.</p>
+          <div class="hero-actions"><a class="btn" href="examples.html#basic">Start with Basic</a><a class="btn secondary" href="examples.html#full">Open Full example</a><a class="btn ghost" href="components.html">Explore controls</a></div>
+        </div>
+        <div class="hero-card" aria-label="Ejemplo corto de SynergyUI">
+          <div class="card-chrome"><span class="chrome-dot"></span>main.lua · first render</div>
+          <pre><span class="code-key">local</span> Window = SynergyUI:<span class="code-call">CreateWindow</span>({
+  Title = <span class="code-string">"Synergy Hub"</span>,
+  Theme = <span class="code-string">"Rise"</span>,
+  ToggleKey = Enum.KeyCode.RightShift,
+})
+
+<span class="code-key">local</span> Main = Window:<span class="code-call">CreateTab</span>(<span class="code-string">"Main"</span>, <span class="code-string">"home"</span>)
+<span class="code-key">local</span> elements = Main
+
+elements:<span class="code-call">CreateToggle</span>({
+  Name = <span class="code-string">"Enable feature"</span>,
+  Flag = <span class="code-string">"FeatureEnabled"</span>,
+  Callback = <span class="code-key">function</span>(value) <span class="code-comment">-- …</span> <span class="code-key">end</span>,
+})</pre>
+        </div>
+      </section>
+
+      <section class="kpi-strip" aria-label="Resumen del sistema">
+        <div class="kpi"><strong>18,146</strong><span>icon entries</span></div>
+        <div class="kpi"><strong>18</strong><span>public builders + aliases</span></div>
+        <div class="kpi"><strong>16</strong><span>built-in themes</span></div>
+        <div class="kpi"><strong>0 deps</strong><span>HTML docs runtime</span></div>
+      </section>
+
+      <section class="section search-target" id="mental-model" data-search-title="Mental model" data-search-text="CreateWindow CreateTab elements Flag callback config handler.">
+        <div class="section-header"><h2>The mental model</h2><p>La API sigue una jerarquía deliberadamente pequeña. Aprende esta secuencia y el resto se vuelve composición.</p></div>
+        <div class="grid-3">
+          <article class="card number-card accent-card" data-number="01"><h3>Window</h3><p>El contenedor visual y el ciclo de vida: tema, tamaño, toggle key, persistencia, overlays y diálogos.</p><div class="meta">SynergyUI:CreateWindow</div></article>
+          <article class="card number-card accent-violet" data-number="02"><h3>Tab</h3><p>Una sección navegable. Cada tab devuelve el objeto <code>elements</code>, que concentra todos los constructores.</p><div class="meta">Window:CreateTab</div></article>
+          <article class="card number-card accent-lime" data-number="03"><h3>Element</h3><p>Un control con opciones, flag, valor inicial y callback. Las flags permiten leer y cambiar estado desde fuera.</p><div class="meta">elements:Create*</div></article>
+        </div>
+        <div class="prose" style="margin-top:22px"><blockquote><p><strong>Regla práctica:</strong> define un <code>Flag</code> estable para cada valor que quieras persistir, recuperar o manipular programáticamente. Si no pasas <code>Flag</code>, muchos controles usan <code>Name</code> como fallback.</p></blockquote></div>
+      </section>
+
+      <section class="section search-target" id="quickstart" data-search-title="Quickstart · Basic / Full" data-search-text="Basic example Full example CreateWindow CreateTab CreateToggle CreateSlider CreateDropdown.">
+        <div class="section-header"><h2>Two paths in</h2><p>Empieza con el mínimo que renderiza una UI funcional o salta al patrón completo con configuración, flags y varios controles.</p></div>
+        <div class="grid-2">
+          <div class="card"><h3>Basic example</h3><p>La ruta más corta: ventana, tab y un control. Ideal para comprobar que la librería está cargada.</p><a class="btn" style="margin-top:16px" href="examples.html#basic">View Basic →</a></div>
+          <div class="card accent-violet"><h3>Full example</h3><p>Una base más realista con tema, persistencia, iconos, sliders, dropdown multi-select, color picker y lifecycle.</p><a class="btn secondary" style="margin-top:16px" href="examples.html#full">View Full →</a></div>
+        </div>
+      </section>
+
+      <section class="section search-target" id="capabilities" data-search-title="What is covered" data-search-text="Windows controls themes icons localization persistence notifications dialogs.">
+        <div class="section-header"><h2>Everything accounted for</h2><p>Esta documentación refleja el estado real de <code>dist/main.lua</code>, incluyendo alias, opciones, límites y detalles de implementación que suelen romper integraciones.</p></div>
+        <div class="grid-2">
+          <article class="card"><h3>UI surface</h3><p>Window, tabs, drag, resize, minimize, overlay manager, notifications, game notifications, Alert, Confirm y Prompt.</p><div class="meta">api.html</div></article>
+          <article class="card"><h3>Controls</h3><p>Label, Section, Separator, Button, Toggle, CheckBox, Slider, ProgressBar, Dropdown, Checklist, inputs, Keybind, ColorPicker, RadioGroup, Paragraph, Image y Video.</p><div class="meta">components.html</div></article>
+          <article class="card"><h3>State & persistence</h3><p>Flags, callbacks protegidos con <code>pcall</code>, JSON local en <code>SynergyUI/Settings/&lt;config&gt;.json</code> y restauración al crear.</p><div class="meta">reference.html</div></article>
+          <article class="card"><h3>Theme & language</h3><p>16 temas incorporados, esquema semántico y legacy, registro de temas propios, fallback de idioma y textos con prefijo <code>@</code>.</p><div class="meta">themes.html · localization.html</div></article>
+        </div>
+      </section>
+
+      <section class="section search-target" id="design-decisions" data-search-title="Documentation structure" data-search-text="Organización de la documentación, contratos, tablas y ejemplos.">
+        <div class="section-header"><h2>Documentation structure</h2><p>La navegación es visual; el contenido es contractual. Cada página separa intención, firma, opciones, retorno, callback y gotchas.</p></div>
+        <div class="step-list">
+          <div class="step"><div><h3>Use a task path</h3><p>Si quieres levantar una UI, ve a Quickstart. Si necesitas decidir qué control usar, ve a Components. Si depuras estado, ve a Runtime notes.</p></div></div>
+          <div class="step"><div><h3>Read signatures before prose</h3><p>Cada referencia muestra primero la firma exacta que el código expone, luego una explicación y una tabla de opciones. Esto reduce la ambigüedad al consultar una opción o comparar implementaciones.</p></div></div>
+          <div class="step"><div><h3>Trust the generated index</h3><p>El catálogo de iconos se genera directamente desde <code>src/Icons/*/Icons.lua</code>; no es una lista inventada ni una muestra incompleta.</p></div></div>
+          <div class="step"><div><h3>Keep source links close</h3><p>Los enlaces de cada sección apuntan al archivo o al contrato correspondiente, para que una corrección futura pueda contrastarse con la implementación.</p></div></div>
+        </div>
+      </section>
+
+      <section class="section search-target" id="source-map" data-search-title="Source map" data-search-text="Repository structure main.lua icons workflow files.">
+        <div class="section-header"><h2>Repository map</h2><p>La documentación no oculta de dónde sale cada afirmación.</p></div>
+        <div class="table-wrap"><table><thead><tr><th>Path</th><th>Role</th><th>Read this when</th></tr></thead><tbody>
+          <tr><td><code>dist/main.lua</code></td><td>Implementación completa de la API y el runtime.</td><td>Quieres verificar una opción, un callback o un límite exacto.</td></tr>
+          <tr><td><code>src/Icons/&lt;set&gt;/Icons.lua</code></td><td>Catálogos de nombres y asset IDs para tabs.</td><td>Necesitas elegir, buscar o cargar varios icon sets.</td></tr>
+          <tr><td><code>web/index.html</code></td><td>Entrada editorial y mapa de conceptos.</td><td>Quieres entender el sistema antes de copiar código.</td></tr>
+          <tr><td><code>web/api.html</code> · <code>components.html</code></td><td>Referencia operativa por contrato.</td><td>Estás implementando o corrigiendo una integración.</td></tr>
+          <tr><td><code>.github/workflows/docs.yml</code></td><td>Verificación estática de la carpeta web.</td><td>Quieres revisar el cambio automáticamente en cada push/PR.</td></tr>
+        </tbody></table></div>
+      </section>
+
+      <footer class="footer"><span>SynergyUI docs · generated from repository source</span><span><a href="https://github.com/Xyraniz/SynergyUI" rel="noreferrer">Open repository ↗</a> · <a href="reference.html">Runtime notes</a></span></footer>
+    </div>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

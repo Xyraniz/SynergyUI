@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Ejemplos Basic y Full para comenzar a construir interfaces con SynergyUI."><title>SynergyUI · Quickstart</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css"></head>
+<body data-page="examples"><a class="skip-link" href="#main-content">Saltar al contenido</a><div class="site-shell"><aside class="sidebar" aria-label="Navegación de documentación"><div class="brand"><div class="brand-mark">S</div><div><span class="brand-name">SynergyUI</span><span class="brand-sub">Lua UI system</span></div></div><div class="nav-label">Start here</div><a class="nav-link" data-page="home" href="index.html"><span>Overview</span><span class="nav-kicker">01</span></a><a class="nav-link" data-page="examples" href="examples.html"><span>Quickstart</span><span class="nav-kicker">02</span></a><div class="nav-label">Reference</div><a class="nav-link" data-page="api" href="api.html"><span>Global API</span><span class="nav-kicker">03</span></a><a class="nav-link" data-page="components" href="components.html"><span>Components</span><span class="nav-kicker">04</span></a><a class="nav-link" data-page="themes" href="themes.html"><span>Themes</span><span class="nav-kicker">05</span></a><a class="nav-link" data-page="icons" href="icons.html"><span>Icon catalog</span><span class="nav-kicker">06</span></a><a class="nav-link" data-page="localization" href="localization.html"><span>Localization</span><span class="nav-kicker">07</span></a><a class="nav-link" data-page="reference" href="reference.html"><span>Runtime notes</span><span class="nav-kicker">08</span></a><div class="sidebar-footer"><strong>Recommended flow</strong><span>Start Basic, then add flags, config and controls from the Full example.</span></div></aside><main class="main" id="main-content"><header class="topbar"><button class="menu-toggle" data-menu-toggle aria-label="Abrir navegación" aria-expanded="false">☰</button><div class="breadcrumb">docs / <strong>quickstart</strong></div><div class="top-actions"><div class="search-wrap"><label class="search-box" aria-label="Buscar en la documentación"><span>⌕</span><input data-global-search type="search" placeholder="Search docs…" autocomplete="off"><span class="shortcut">⌘K</span></label><div class="search-results" data-search-results></div></div></div></header><div class="page">
+<section class="hero search-target" id="quickstart" data-search-title="Quickstart" data-search-text="Basic Full example installation CreateWindow CreateTab elements"><div><span class="eyebrow">Start here / examples</span><h1>From blank<br><span class="outline">to useful.</span></h1><p class="lede">Copia el Basic example para comprobar la integración. Cuando necesites persistencia, temas o varios controles, usa el Full example como punto de partida.</p><div class="hero-actions"><a class="btn" href="#basic">Basic example</a><a class="btn secondary" href="#full">Full example</a></div></div><div class="hero-card"><div class="card-chrome"><span class="chrome-dot"></span>the only required shape</div><pre><span class="code-key">local</span> Window = SynergyUI:<span class="code-call">CreateWindow</span>({...})
+<span class="code-key">local</span> Tab = Window:<span class="code-call">CreateTab</span>(<span class="code-string">"Main"</span>)
+Tab:<span class="code-call">CreateButton</span>({
+  Name = <span class="code-string">"Run"</span>,
+  Callback = <span class="code-key">function</span>() <span class="code-comment">-- action</span> <span class="code-key">end</span>,
+})</pre></div></section>
+
+<section class="section search-target" id="installation" data-search-title="Installation" data-search-text="load SynergyUI require loadstring source main.lua"><div class="section-header"><h2>Before the first window</h2><p>SynergyUI se entrega como un módulo Lua. Carga la tabla devuelta por <code>main.lua</code> y usa el objeto como namespace.</p></div><div class="callout warning"><strong>Loader note</strong><span>El repositorio contiene el archivo de implementación. El método exacto de carga depende de tu entorno Roblox. Mantén el resultado en una variable llamada <code>SynergyUI</code> para que los ejemplos sean directamente copiables.</span></div><div class="code-panel"><button class="copy-btn">COPY</button><pre><span class="code-comment">-- Ejemplo conceptual de carga; usa el loader de tu entorno.</span>
+<span class="code-key">local</span> SynergyUI = <span class="code-call">loadstring</span>(source)()</pre></div></section>
+
+<section class="section search-target" id="basic" data-search-title="Basic example" data-search-text="CreateWindow CreateTab CreateButton minimal example"><div class="section-header"><h2>01 · Basic example</h2><p>El contrato mínimo: ventana, tab y un botón. El callback se ejecuta al hacer click.</p></div><div class="code-panel"><button class="copy-btn">COPY</button><pre><span class="code-key">local</span> Window = SynergyUI:<span class="code-call">CreateWindow</span>({
+  Title = <span class="code-string">"My first window"</span>,
+})
+
+<span class="code-key">local</span> MainTab = Window:<span class="code-call">CreateTab</span>(<span class="code-string">"Main"</span>)
+
+MainTab:<span class="code-call">CreateButton</span>({
+  Name = <span class="code-string">"Say hello"</span>,
+  Callback = <span class="code-key">function</span>()
+    SynergyUI:<span class="code-call">Notify</span>(<span class="code-string">"Hello from SynergyUI"</span>)
+  <span class="code-key">end</span>,
+})</pre></div><div class="grid-3" style="margin-top:16px"><article class="card"><h3>Window</h3><p>Se crea visible con tema Rise y tamaño 560 × 380.</p></article><article class="card"><h3>Tab</h3><p>El primer tab queda activo automáticamente y devuelve el namespace de elementos.</p></article><article class="card"><h3>Button</h3><p>Devuelve frame y connection; añade tooltip si lo necesitas.</p></article></div></section>
+
+<section class="section search-target" id="full" data-search-title="Full example" data-search-text="full example Theme ConfigName IconSet flags sliders dropdown color picker keybind lifecycle"><div class="section-header"><h2>02 · Full example</h2><p>Una base funcional para una UI con estado, preferencias persistentes y varios tipos de interacción.</p></div><div data-example-group><div class="example-tabs" role="tablist" aria-label="Variantes del ejemplo"><button class="example-tab active" role="tab" aria-selected="true" data-target="full-code">Full implementation</button><button class="example-tab" role="tab" aria-selected="false" data-target="full-notes">What it covers</button></div><div class="example-content active" id="full-code"><div class="code-panel"><button class="copy-btn">COPY</button><pre><span class="code-key">local</span> Window = SynergyUI:<span class="code-call">CreateWindow</span>({
+  Title = <span class="code-string">"Synergy Control"</span>,
+  Subtitle = <span class="code-string">"preferences"</span>,
+  Theme = <span class="code-string">"TokyoNight"</span>,
+  AccentColor = Color3.fromRGB(122, 162, 247),
+  ToggleKey = Enum.KeyCode.RightShift,
+  ConfigName = <span class="code-string">"synergy_preferences"</span>,
+  IconSet = { <span class="code-string">"lucide"</span>, <span class="code-string">"solar"</span> },
+  OnDestroy = <span class="code-key">function</span>() print(<span class="code-string">"cleaned"</span>) <span class="code-key">end</span>,
+})
+
+Window:<span class="code-call">OnOpen</span>(<span class="code-key">function</span>(window) print(<span class="code-string">"opened"</span>) <span class="code-key">end</span>)
+
+<span class="code-key">local</span> Main = Window:<span class="code-call">CreateTab</span>(<span class="code-string">"Main"</span>, <span class="code-string">"layout-dashboard"</span>)
+Main:<span class="code-call">CreateSection</span>(<span class="code-string">"Runtime"</span>)
+Main:<span class="code-call">CreateLabel</span>(<span class="code-string">"Changes are saved automatically."</span>)
+
+<span class="code-key">local</span> enabled = Main:<span class="code-call">CreateToggle</span>({
+  Name = <span class="code-string">"Enable feature"</span>,
+  Flag = <span class="code-string">"FeatureEnabled"</span>,
+  CurrentValue = <span class="code-key">true</span>,
+  Callback = <span class="code-key">function</span>(value) print(<span class="code-string">"enabled:"</span>, value) <span class="code-key">end</span>,
+})
+
+<span class="code-key">local</span> strength = Main:<span class="code-call">CreateSlider</span>({
+  Name = <span class="code-string">"Strength"</span>,
+  Flag = <span class="code-string">"Strength"</span>,
+  Range = { 0, 100 },
+  Increment = 5,
+  CurrentValue = 50,
+  Callback = <span class="code-key">function</span>(value) print(value) <span class="code-key">end</span>,
+})
+
+<span class="code-key">local</span> mode = Main:<span class="code-call">CreateDropdown</span>({
+  Name = <span class="code-string">"Mode"</span>,
+  Flag = <span class="code-string">"Mode"</span>,
+  Options = { <span class="code-string">"Safe"</span>, <span class="code-string">"Balanced"</span>, <span class="code-string">"Fast"</span> },
+  CurrentOption = <span class="code-string">"Balanced"</span>,
+  Searchable = <span class="code-key">true</span>,
+  Callback = <span class="code-key">function</span>(value) print(value) <span class="code-key">end</span>,
+})
+
+<span class="code-key">local</span> palette = Main:<span class="code-call">CreateColorPicker</span>({
+  Name = <span class="code-string">"Accent"</span>,
+  Flag = <span class="code-string">"Accent"</span>,
+  Color = Color3.fromRGB(88, 220, 255),
+  Callback = <span class="code-key">function</span>(color) Window:<span class="code-call">SetAccent</span>(color) <span class="code-key">end</span>,
+})
+
+<span class="code-key">local</span> Settings = Window:<span class="code-call">CreateTab</span>(<span class="code-string">"Settings"</span>, <span class="code-string">"settings-2"</span>)
+Settings:<span class="code-call">CreateKeybind</span>({ Name = <span class="code-string">"Toggle UI"</span>, Flag = <span class="code-string">"Keybind"</span>, CurrentKeybind = <span class="code-string">"RightShift"</span> })
+Settings:<span class="code-call">CreateTextInput</span>({ Name = <span class="code-string">"Profile"</span>, Flag = <span class="code-string">"Profile"</span>, Placeholder = <span class="code-string">"default"</span> })
+Settings:<span class="code-call">CreateButton</span>({ Name = <span class="code-string">"Reset window"</span>, Callback = <span class="code-key">function</span>() Window:<span class="code-call">SetTheme</span>(<span class="code-string">"Rise"</span>) <span class="code-key">end</span> })</pre></div></div><div class="example-content" id="full-notes"><div class="grid-2" style="padding:16px 0"><article class="card"><h3>State</h3><p>Cada flag se carga desde el JSON antes de usar <code>CurrentValue</code>. Los cambios llaman a <code>ConfigHandler:Set</code> y se guardan en diferido.</p></article><article class="card"><h3>Icons</h3><p>Los nombres <code>layout-dashboard</code> y <code>settings-2</code> se resuelven en los sets cargados. Usa varios sets cuando necesites cubrir familias distintas.</p></article><article class="card"><h3>Callbacks</h3><p>Los callbacks se invocan con <code>pcall</code>. Un error no debería desmontar el resto de la UI, pero debes registrar el error si quieres depurarlo.</p></article><article class="card"><h3>Window lifetime</h3><p><code>Destroy</code> limpia conexiones, tareas de rainbow, overlays y diálogos propiedad de la ventana.</p></article></div></div></div></section>
+
+<section class="section search-target" id="next-steps" data-search-title="Next steps" data-search-text="components flags themes icons localization runtime"><div class="section-header"><h2>Choose the next page</h2><p>Ahora que tienes una ventana, profundiza en la parte que vas a construir.</p></div><div class="grid-3"><a class="card" href="components.html"><h3>Components →</h3><p>Contratos completos de todos los controles.</p></a><a class="card" href="themes.html"><h3>Themes →</h3><p>Personaliza colores, métricas y motion.</p></a><a class="card" href="icons.html"><h3>Icon catalog →</h3><p>Busca entre los seis sets versionados.</p></a></div></section>
+<footer class="footer"><span>Quickstart · Basic + Full</span><span><a href="api.html">Global API</a> · <a href="reference.html">Runtime notes</a></span></footer></div></main></div><script src="app.js"></script></body></html>

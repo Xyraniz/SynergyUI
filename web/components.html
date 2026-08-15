@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Referencia completa de controles y elementos de SynergyUI: opciones, flags, callbacks y retornos."><title>SynergyUI · Components</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css"></head>
+<body data-page="components"><a class="skip-link" href="#main-content">Saltar al contenido</a><div class="site-shell"><aside class="sidebar" aria-label="Navegación de documentación"><div class="brand"><div class="brand-mark">S</div><div><span class="brand-name">SynergyUI</span><span class="brand-sub">Lua UI system</span></div></div><div class="nav-label">Start here</div><a class="nav-link" data-page="home" href="index.html"><span>Overview</span><span class="nav-kicker">01</span></a><a class="nav-link" data-page="examples" href="examples.html"><span>Quickstart</span><span class="nav-kicker">02</span></a><div class="nav-label">Reference</div><a class="nav-link" data-page="api" href="api.html"><span>Global API</span><span class="nav-kicker">03</span></a><a class="nav-link" data-page="components" href="components.html"><span>Components</span><span class="nav-kicker">04</span></a><a class="nav-link" data-page="themes" href="themes.html"><span>Themes</span><span class="nav-kicker">05</span></a><a class="nav-link" data-page="icons" href="icons.html"><span>Icon catalog</span><span class="nav-kicker">06</span></a><a class="nav-link" data-page="localization" href="localization.html"><span>Localization</span><span class="nav-kicker">07</span></a><a class="nav-link" data-page="reference" href="reference.html"><span>Runtime notes</span><span class="nav-kicker">08</span></a><div class="sidebar-footer"><strong>Component contract</strong><span>Opciones → estado inicial → callback → retorno. Consulta flags antes de mutar valores.</span></div></aside><main class="main" id="main-content"><header class="topbar"><button class="menu-toggle" data-menu-toggle aria-label="Abrir navegación" aria-expanded="false">☰</button><div class="breadcrumb">docs / <strong>components</strong></div><div class="top-actions"><div class="search-wrap"><label class="search-box" aria-label="Buscar en la documentación"><span>⌕</span><input data-global-search type="search" placeholder="Search docs…" autocomplete="off"><span class="shortcut">⌘K</span></label><div class="search-results" data-search-results></div></div></div></header><div class="page">
+<section class="hero search-target" id="components-overview" data-search-title="Components overview" data-search-text="CreateLabel CreateButton CreateToggle CreateSlider CreateDropdown all controls"><div><span class="eyebrow">Reference / components</span><h1>Every control<br><span class="outline">has a contract.</span></h1><p class="lede">Todos los builders viven en el objeto devuelto por <code>Window:CreateTab</code>. Cada control define su forma de entrada, su persistencia y el objeto que puedes conservar.</p><div class="hero-actions"><a class="btn" href="#control-matrix">Control matrix</a><a class="btn secondary" href="#flag-pattern">Flag pattern</a></div></div><div class="hero-card"><div class="card-chrome"><span class="chrome-dot"></span>elements namespace</div><pre><span class="code-key">local</span> Settings = Window:<span class="code-call">CreateTab</span>(<span class="code-string">"Settings"</span>)
+<span class="code-key">local</span> slider = Settings:<span class="code-call">CreateSlider</span>({
+  Name = <span class="code-string">"Volume"</span>,
+  Flag = <span class="code-string">"Volume"</span>,
+  Range = { 0, 100 },
+})
+
+slider:<span class="code-call">SetValue</span>(75)
+<span class="code-key">local</span> value = slider:<span class="code-call">GetValue</span>()</pre></div></section>
+
+<section class="section search-target" id="control-matrix" data-search-title="Control matrix" data-search-text="all public builders return values connections options"><div class="section-header"><h2>Control matrix</h2><p>Mapa rápido antes de abrir el contrato individual.</p></div><div class="table-wrap"><table class="table-compact"><thead><tr><th>Builder</th><th>Primary options</th><th>Return</th><th>Flag API</th></tr></thead><tbody>
+<tr><td><code>CreateSection</code></td><td>name</td><td>TextLabel</td><td>—</td></tr><tr><td><code>CreateLabel</code></td><td>text</td><td>TextLabel</td><td>—</td></tr><tr><td><code>CreateSeparator</code></td><td>—</td><td>Frame</td><td>—</td></tr><tr><td><code>CreateButton</code></td><td>Name, Tooltip, Callback</td><td>Frame, Connection</td><td>—</td></tr><tr><td><code>CreateToggle</code></td><td>Name, Flag, CurrentValue, Callback</td><td>Frame, Connection</td><td>GetValue / SetValue</td></tr><tr><td><code>CreateCheckBox</code></td><td>Name, Flag, CurrentValue, Callback</td><td>Frame, Connection</td><td>GetValue / SetValue</td></tr><tr><td><code>CreateSlider</code></td><td>Name, Flag, Range, Increment, CurrentValue, Callback</td><td>Frame, connections</td><td>GetValue / SetValue</td></tr><tr><td><code>CreateProgressBar</code></td><td>Name, Flag, Range/Min/Max, Format, ShowPercentage, Callback</td><td>flag object</td><td>GetValue / GetPercentage / SetValue / SetProgress</td></tr><tr><td><code>CreateDropdown</code></td><td>Name, Flag, Options, MultiSelect, Searchable, Callback</td><td>flag object, Connection</td><td>GetValue / SetValue / options</td></tr><tr><td><code>CreateChecklist</code></td><td>Name, Flag, Options, CurrentSelected, Callback</td><td>flag object, Connection</td><td>GetValue / SetValue / options</td></tr><tr><td><code>CreateTextInput</code></td><td>Name, Flag, CurrentText, Placeholder, Callback</td><td>flag object, Connection</td><td>GetValue / SetValue</td></tr><tr><td><code>CreateNumberInput</code></td><td>Name, Flag, CurrentValue, Callback</td><td>flag object, Connection</td><td>GetValue / SetValue</td></tr><tr><td><code>CreateKeybind</code></td><td>Name, Flag, CurrentKeybind, Callback</td><td>flag object, connections</td><td>GetValue / SetValue</td></tr><tr><td><code>CreateColorPicker</code></td><td>Name, Flag, Color, Callback</td><td>flag object, Connection</td><td>GetValue / SetValue</td></tr><tr><td><code>CreateRadioGroup</code></td><td>Name, Flag, Options, CurrentValue, Callback</td><td>flag object, nil</td><td>GetValue / SetValue</td></tr><tr><td><code>CreateParagraph</code></td><td>Title, Content, Image, ImageDescription</td><td>Frame</td><td>—</td></tr><tr><td><code>CreateImage</code></td><td>Title, Image, Description</td><td>Frame</td><td>—</td></tr><tr><td><code>CreateVideo</code></td><td>Title, Video, Looped, Volume</td><td>Frame</td><td>—</td></tr></tbody></table></div></section>
+
+<section class="section search-target" id="flag-pattern" data-search-title="Flags and state" data-search-text="Flag CurrentValue saved value GetValue SetValue config persistence callback"><div class="section-header"><h2>Flags are the state layer</h2><p>Un flag es una clave estable en la configuración de la ventana y un objeto de control en <code>Window.Flags</code>.</p></div><div class="code-panel"><button class="copy-btn">COPY</button><pre><span class="code-key">local</span> toggle = Tab:<span class="code-call">CreateToggle</span>({
+  Name = <span class="code-string">"Enabled"</span>,
+  Flag = <span class="code-string">"Enabled"</span>,
+  CurrentValue = <span class="code-key">false</span>,
+})
+
+<span class="code-key">local</span> current = toggle:<span class="code-call">GetValue</span>()
+toggle:<span class="code-call">SetValue</span>(<span class="code-key">true</span>)
+
+<span class="code-comment">-- La misma referencia queda disponible en la ventana:</span>
+<span class="code-key">local</span> sameControl = Window.Flags.Enabled</pre></div><div class="callout"><strong>Prioridad de valor</strong><span>Cuando existe un valor guardado con el mismo flag y tiene el tipo esperado, el control lo usa primero. Si no, usa <code>CurrentValue</code>, <code>CurrentOption</code>, <code>CurrentSelected</code>, <code>CurrentText</code> o el default del componente.</span></div></section>
+
+<section class="section search-target" id="layout-elements" data-search-title="Layout elements" data-search-text="CreateSection CreateLabel CreateSeparator CreateParagraph CreateImage CreateVideo"><div class="section-header"><h2>Layout & content</h2><p>Elementos sin flag para organizar contenido, separar secciones o mostrar medios.</p></div><div class="grid-2"><details class="card api-card" open><summary><span><span class="api-signature">elements:CreateSection(name)</span><span class="api-summary">→ TextLabel de 28 px</span></span></summary><div class="api-body"><p>Crea una cabecera de sección con color accent. Acepta textos localizados con prefijo <code>@</code>.</p><div class="code-panel"><button class="copy-btn">COPY</button><pre>Tab:CreateSection("Advanced")</pre></div></div></details><details class="card api-card"><summary><span><span class="api-signature">elements:CreateLabel(text)</span><span class="api-summary">→ TextLabel</span></span></summary><div class="api-body"><p>Tarjeta de texto simple con borde, accent lateral, wrapping y texto localizable.</p><div class="code-panel"><button class="copy-btn">COPY</button><pre>Tab:CreateLabel("Changes apply instantly.")</pre></div></div></details><details class="card api-card"><summary><span><span class="api-signature">elements:CreateSeparator()</span><span class="api-summary">→ Frame de 1 px</span></span></summary><div class="api-body"><p>Usa el color de stroke del tema para dividir grupos de controles.</p></div></details><details class="card api-card"><summary><span><span class="api-signature">elements:CreateParagraph(options)</span><span class="api-summary">→ Frame auto-height</span></span></summary><div class="api-body"><p>Opciones: <code>Title</code>, <code>Content</code>, <code>Image</code> y <code>ImageDescription</code>. La altura se calcula mediante <code>TextService</code>; la imagen mide 120 px.</p><div class="code-panel"><button class="copy-btn">COPY</button><pre>Tab:CreateParagraph({
+  Title = "About this profile",
+  Content = "Longer explanatory text goes here.",
+  Image = "rbxassetid://123456",
+  ImageDescription = "Optional caption",
+})</pre></div></div></details><details class="card api-card"><summary><span><span class="api-signature">elements:CreateImage(options)</span><span class="api-summary">→ acordeón de imagen</span></span></summary><div class="api-body"><p>Opciones: <code>Title</code>, <code>Image</code>, <code>Description</code>. Comienza colapsado; al abrirlo muestra la imagen y una descripción opcional.</p></div></details><details class="card api-card"><summary><span><span class="api-signature">elements:CreateVideo(options)</span><span class="api-summary">→ acordeón con Play/Pause</span></span></summary><div class="api-body"><p>Opciones: <code>Title</code>, <code>Video</code>, <code>Looped</code>, <code>Volume</code>. El vídeo usa <code>VideoFrame</code> de Roblox y empieza pausado.</p></div></details></div></section>
+
+<section class="section search-target" id="inputs" data-search-title="Inputs" data-search-text="TextInput NumberInput Keybind text numeric input keybind"><div class="section-header"><h2>Inputs & bindings</h2><p>Controles de texto, números y atajos, con validación mínima incorporada.</p></div><div class="grid-3"><article class="card"><h3><code>CreateTextInput</code></h3><p><code>CurrentText</code> y <code>Placeholder</code>. El callback recibe <code>input.Text</code> al perder foco. <code>SetValue</code> escribe directamente el texto.</p></article><article class="card"><h3><code>CreateNumberInput</code></h3><p>Filtra caracteres a dígitos, punto y signo. Al perder foco acepta solo valores convertibles con <code>tonumber</code>; si falla, restaura el valor anterior.</p></article><article class="card"><h3><code>CreateKeybind</code></h3><p><code>CurrentKeybind</code> es un nombre string. Captura teclado y botones del mouse; Escape se guarda como <code>None</code>; una captura expira a los 5 segundos.</p></article></div><div class="code-panel" style="margin-top:16px"><button class="copy-btn">COPY</button><pre>local Profile = Tab:CreateTextInput({
+  Name = "Profile name", Flag = "Profile", CurrentText = "default",
+  Placeholder = "Type a name",
+  Callback = function(value) print(value) end,
+})
+
+local Amount = Tab:CreateNumberInput({
+  Name = "Amount", Flag = "Amount", CurrentValue = 10,
+  Callback = function(value) print(value) end,
+})
+
+local Hotkey = Tab:CreateKeybind({
+  Name = "Action key", Flag = "ActionKey", CurrentKeybind = "F",
+  Callback = function(value) print(value) end,
+})</pre></div></section>
+
+<section class="section search-target" id="boolean-controls" data-search-title="Toggle Checkbox RadioGroup" data-search-text="Toggle CheckBox RadioGroup boolean single choice"><div class="section-header"><h2>Boolean & choice controls</h2><p>Usa Toggle para un estado binario, CheckBox para la misma semántica con otra presentación y RadioGroup para una selección única.</p></div><div class="grid-3"><article class="card accent-card"><h3><code>CreateToggle</code></h3><p><code>state</code> inicial booleano; callback recibe el nuevo estado. Al crear, solo llama callback si el estado inicial es true.</p></article><article class="card accent-violet"><h3><code>CreateCheckBox</code></h3><p>Mismo contrato de estado que Toggle. El callback también recibe booleano y el flag expone <code>GetValue</code>/<code>SetValue</code>.</p></article><article class="card accent-lime"><h3><code>CreateRadioGroup</code></h3><p><code>Options</code> es obligatorio en la práctica. Selecciona la primera opción si no hay valor válido inicial. Nota: este control comprueba <code>CurrentValue</code> antes del valor guardado.</p></article></div><div class="code-panel" style="margin-top:16px"><button class="copy-btn">COPY</button><pre>local Quality = Tab:CreateRadioGroup({
+  Name = "Quality", Flag = "Quality",
+  Options = { "Low", "Medium", "High" },
+  CurrentValue = "High",
+  Callback = function(value) print(value) end,
+})
+
+local checked = Tab:CreateCheckBox({
+  Name = "Use cache", Flag = "UseCache", CurrentValue = true,
+})</pre></div></section>
+
+<section class="section search-target" id="numeric-controls" data-search-title="Slider ProgressBar numeric controls" data-search-text="Slider Range Increment ProgressBar Format ShowPercentage ShowValue"><div class="section-header"><h2>Numeric controls</h2><p>Slider es interactivo; ProgressBar representa un progreso pero también puede actualizarse por flag.</p></div><div class="grid-2"><details class="card api-card" open><summary><span><span class="api-signature">elements:CreateSlider(options)</span><span class="api-summary">→ frame, connections</span></span></summary><div class="api-body"><p>Requiere <code>Range = { min, max }</code>. <code>Increment</code> redondea por pasos durante drag, input numérico y <code>SetValue</code>. El callback recibe el número.</p><div class="table-wrap"><table class="table-compact"><thead><tr><th>Option</th><th>Use</th></tr></thead><tbody><tr><td><code>CurrentValue</code></td><td>Valor inicial si no hay configuración guardada.</td></tr><tr><td><code>Increment</code></td><td>Paso de redondeo; default 1.</td></tr><tr><td><code>Range</code></td><td>Array de dos números; también se usa para clamp.</td></tr></tbody></table></div></div></details><details class="card api-card"><summary><span><span class="api-signature">elements:CreateProgressBar(options)</span><span class="api-summary">→ flag object</span></span></summary><div class="api-body"><p>Usa <code>Range</code> o <code>Min</code>/<code>Max</code>. Expone <code>GetPercentage</code>, <code>SetValue</code> y alias <code>SetProgress</code>. <code>Format(current, ratio)</code> puede personalizar el label; <code>ShowPercentage</code> muestra porcentaje redondeado.</p></div></details></div><div class="code-panel" style="margin-top:16px"><button class="copy-btn">COPY</button><pre>local slider = Tab:CreateSlider({
+  Name = "Opacity", Flag = "Opacity", Range = { 0, 1 },
+  Increment = 0.05, CurrentValue = 0.8,
+  Callback = function(value) print(value) end,
+})
+
+local progress = Tab:CreateProgressBar({
+  Name = "Download", Flag = "Download", Range = { 0, 100 },
+  CurrentValue = 35, ShowPercentage = true,
+  Format = function(current, ratio) return string.format("%d / 100", current) end,
+})
+progress:SetProgress(72)</pre></div></section>
+
+<section class="section search-target" id="selection-controls" data-search-title="Dropdown Checklist" data-search-text="Dropdown MultiSelect Searchable CurrentOption CurrentSelected AddOption RemoveOption ClearOptions Select Checklist"><div class="section-header"><h2>Selection controls</h2><p>Dropdown sirve para una selección o varias; Checklist representa una lista expandible de selecciones múltiples.</p></div><div class="grid-2"><details class="card api-card" open><summary><span><span class="api-signature">elements:CreateDropdown(options)</span><span class="api-summary">→ flag object, connection</span></span></summary><div class="api-body"><p>Con <code>MultiSelect = false</code>, <code>GetValue</code> devuelve un string y el callback recibe el valor. Con <code>true</code>, devuelve un array; al hacer click el callback recibe <code>option, selected</code>. <code>Searchable</code> añade filtro de texto.</p><div class="code-panel"><button class="copy-btn">COPY</button><pre>local modes = Tab:CreateDropdown({
+  Name = "Modes", Flag = "Modes",
+  Options = { "Safe", "Fast", "Custom" },
+  MultiSelect = true,
+  CurrentSelected = { "Safe" },
+  Searchable = true,
+  Callback = function(option, selected) print(option, selected) end,
+})
+modes:AddOption("Experimental")
+modes:RemoveOption("Safe")
+modes:Select({ "Fast", "Custom" })
+-- modes:ClearOptions()</pre></div></div></details><details class="card api-card"><summary><span><span class="api-signature">elements:CreateChecklist(options)</span><span class="api-summary">→ flag object, connection</span></span></summary><div class="api-body"><p>Opciones: <code>Name</code>, <code>Flag</code>, <code>Options</code>, <code>CurrentSelected</code>, <code>Callback</code>. <code>GetValue</code> devuelve array; incluye <code>AddOption</code> y <code>RemoveOption</code>. Al expandirse limita la altura a 220 px.</p></div></details></div></section>
+
+<section class="section search-target" id="visual-controls" data-search-title="ColorPicker" data-search-text="ColorPicker Color Rainbow Stop HSV Color3 serialization"><div class="section-header"><h2>Color & progress visuals</h2><p>ColorPicker trabaja en HSV, serializa Color3 para persistencia y ofrece modo rainbow.</p></div><div class="card accent-violet"><h3><code>elements:CreateColorPicker(options)</code></h3><p>Opciones: <code>Name</code>, <code>Flag</code>, <code>Color</code>, <code>Callback</code>. El callback recibe <code>Color3</code>. <code>SetValue(newColor)</code> detiene rainbow si estaba activo, actualiza hue/saturation/value y guarda el color.</p><div class="code-panel" style="margin-top:14px"><button class="copy-btn">COPY</button><pre>local color = Tab:CreateColorPicker({
+  Name = "Accent color", Flag = "AccentColor",
+  Color = Color3.fromRGB(88, 220, 255),
+  Callback = function(value) Window:SetAccent(value) end,
+})
+color:SetValue(Color3.fromRGB(165, 139, 255))
+-- El botón del control alterna entre Rainbow y Stop.</pre></div><div class="callout"><strong>Persistencia de Color3</strong><span>La configuración guarda <code>{ __type = "Color3", r = color.R, g = color.G, b = color.B }</code>. No reemplaces esta forma al editar el archivo manualmente.</span></div></div></section>
+
+<section class="section search-target" id="button" data-search-title="Button" data-search-text="CreateButton Name Tooltip Callback"><div class="section-header"><h2>Button details</h2><p>El botón es el control sin estado y el único builder que devuelve su frame junto a la conexión del evento.</p></div><div class="code-panel"><button class="copy-btn">COPY</button><pre>local frame, connection = Tab:CreateButton({
+  Name = "Export",
+  Tooltip = "Write the current profile to disk",
+  Callback = function()
+    SynergyUI:Notify({ Message = "Exported", Type = "done" })
+  end,
+})</pre></div><p class="prose" style="margin-top:16px">Añade hover, escala ligera y ripple en la posición del click. Si el callback lanza un error, SynergyUI muestra una notificación de tipo <code>error</code>.</p></section>
+
+<footer class="footer"><span>Components · flags · callbacks</span><span><a href="examples.html">Quickstart</a> · <a href="themes.html">Themes</a></span></footer></div></main></div><script src="app.js"></script></body></html>

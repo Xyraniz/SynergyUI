@@ -1,0 +1,94 @@
+name: SynergyUI Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'src/Icons/**'
+      - 'tools_build_icon_catalog.py'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'src/Icons/**'
+      - 'tools_build_icon_catalog.py'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate generated icon catalog
+        run: |
+          python3 tools_build_icon_catalog.py
+          git diff --exit-code -- web/icons.json
+
+      - name: Check required files
+        run: |
+          test -s web/index.html
+          test -s web/styles.css
+          test -s web/app.js
+          test -s web/api.json
+          for page in examples api components themes icons localization reference; do
+            test -s "web/${page}.html"
+          done
+
+      - name: Check HTML references
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path('web')
+          files = list(root.glob('*.html'))
+          missing = []
+          for path in files:
+              text = path.read_text(encoding='utf-8')
+              for href in re.findall(r'(?:href|src)="([^"]+)"', text):
+                  if href.startswith(('http://', 'https://', '#', 'mailto:', 'data:')):
+                      continue
+                  target = (path.parent / href.split('#', 1)[0]).resolve()
+                  if href and not target.exists():
+                      missing.append(f'{path}: {href}')
+          if missing:
+              raise SystemExit('Missing references:\n' + '\n'.join(missing))
+          print(f'Checked {len(files)} HTML pages')
+          PY
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: validate
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './web'
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
