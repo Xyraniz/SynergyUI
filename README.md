@@ -20,7 +20,7 @@ Abre `http://localhost:8080/` y comienza por el [Quickstart](web/examples.html).
 | [`dist/main.lua`](dist/main.lua) | Implementación principal de SynergyUI. |
 | [`src/Icons/`](src/Icons/) | Catálogos de iconos cargables desde `CreateWindow`. |
 | [`web/`](web/index.html) | Sitio de documentación estática. |
-| [`.github/workflows/docs.yml`](.github/workflows/docs.yml) | Validación y despliegue de la documentación. |
+| [`.github/workflows/docs.yml`](.github/workflows/docs.yml) | Validación automática de la documentación en pushes y pull requests. |
 
 ## License
 

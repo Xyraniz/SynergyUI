@@ -18,8 +18,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -69,26 +67,6 @@ jobs:
           print(f'Checked {len(files)} HTML pages')
           PY
 
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: validate
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './web'
-
-      - name: Deploy Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+  # GitHub Pages deployment is intentionally not automatic here because enabling
+  # Pages requires repository-administrator permissions that may not be available
+  # to the account-wide token. The validation job remains fully automatic.
