@@ -18,6 +18,8 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: pages
@@ -29,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Validate generated icon catalog
         run: |
@@ -67,6 +69,28 @@ jobs:
           print(f'Checked {len(files)} HTML pages')
           PY
 
-  # GitHub Pages deployment is intentionally not automatic here because enabling
-  # Pages requires repository-administrator permissions that may not be available
-  # to the account-wide token. The validation job remains fully automatic.
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: validate
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+        with:
+          enablement: true
+
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: './web'
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
