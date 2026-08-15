@@ -329,8 +329,8 @@ local function showNextNotification()
     }
     local iconMap = {
         info = "rbxassetid://7021995683",
-        done = "rbxassetid://3926305904",
-        error = "rbxassetid://3926305904",
+        done = "rbxassetid://85262178816537",
+        error = "rbxassetid://76821953846248",
         warning = "rbxassetid://163905183"
     }
     local typeColor = n.TypeColor or colors[n.Type or "info"]
@@ -3620,11 +3620,17 @@ function SynergyUI:CreateWindow(options)
     end
     local iconMap = {}
     if options.IconSet ~= false then
-        local commitRef = "46d30c19ba7bc601d6ec794a48dc3a89568b1eec"
-        local baseUrl = "https://raw.githubusercontent.com/Footagesus/Icons/" .. commitRef .. "/"
+        -- The icon sources live in this repository. Since dist/main.lua runs as a
+        -- standalone Roblox script, it loads the repository directory through its
+        -- raw GitHub URLs instead of relying on a local filesystem path.
+        local iconCommit = "03461a61928eb42028daeffe56268e3fff294fba"
+        local baseUrl = "https://raw.githubusercontent.com/Xyraniz/SynergyUI/" .. iconCommit .. "/src/Icons/"
         local fetch = request or (syn and syn.request) or (http and http.request) or http_request
         local function fetchIconSet(setName)
-            local iconUrl = baseUrl .. setName .. "/dist/Icons.lua"
+            if type(setName) ~= "string" or not setName:match("^[%w_-]+$") then
+                return nil
+            end
+            local iconUrl = baseUrl .. setName .. "/Icons.lua"
             local body = nil
             if fetch then
                 local ok, res = pcall(function() return fetch({Url = iconUrl, Method = "GET"}) end)
@@ -3641,19 +3647,64 @@ function SynergyUI:CreateWindow(options)
             if ok and type(loadedMap) == "table" then return loadedMap end
             return nil
         end
-        local setsToLoad = {"lucide", "gravity"}
-        if type(options.IconSet) == "string" then
-            setsToLoad = {options.IconSet}
+        local function registerIcon(iconName, value, loadedMap)
+            if type(iconName) ~= "string" then
+                return
+            end
+            if type(value) == "string" then
+                if iconMap[iconName] == nil then
+                    iconMap[iconName] = {Image = value}
+                end
+                return
+            end
+            if type(value) ~= "table" then
+                return
+            end
+            local image = value.Image
+            local spritesheets = loadedMap and loadedMap.Spritesheets
+            if type(image) == "number" and type(spritesheets) == "table" then
+                image = spritesheets[image] or spritesheets[tostring(image)]
+            end
+            if type(image) ~= "string" then
+                return
+            end
+            local descriptor = {Image = image}
+            if value.ImageRectPosition then
+                descriptor.ImageRectPosition = value.ImageRectPosition
+            end
+            if value.ImageRectSize then
+                descriptor.ImageRectSize = value.ImageRectSize
+            end
+            if value.Parts then
+                descriptor.Parts = value.Parts
+            end
+            if iconMap[iconName] == nil then
+                iconMap[iconName] = descriptor
+            end
         end
-        for _, setName in ipairs(setsToLoad) do
-            local loadedMap = fetchIconSet(setName)
-            if loadedMap then
-                for iconName, assetId in pairs(loadedMap) do
-                    if iconMap[iconName] == nil then
-                        iconMap[iconName] = assetId
-                    end
+        local function mergeIconSet(loadedMap)
+            if type(loadedMap) ~= "table" then
+                return
+            end
+            for iconName, value in pairs(loadedMap) do
+                if iconName ~= "Icons" and iconName ~= "Spritesheets" then
+                    registerIcon(iconName, value, loadedMap)
                 end
             end
+            if type(loadedMap.Icons) == "table" then
+                for iconName, value in pairs(loadedMap.Icons) do
+                    registerIcon(iconName, value, loadedMap)
+                end
+            end
+        end
+        local setsToLoad = {"lucide", "gravity", "craft", "geist", "sfsymbols", "solar"}
+        if type(options.IconSet) == "string" then
+            setsToLoad = {options.IconSet}
+        elseif type(options.IconSet) == "table" then
+            setsToLoad = options.IconSet
+        end
+        for _, setName in ipairs(setsToLoad) do
+            mergeIconSet(fetchIconSet(setName))
         end
     end
     function window:RefreshTheme()
@@ -4007,6 +4058,7 @@ function SynergyUI:CreateWindow(options)
         if type(icon) == "string" and not icon:match("^rbxasset") and not icon:match("^http") then
             iconAsset = iconMap[icon] or ""
         end
+        local iconImage = type(iconAsset) == "table" and iconAsset.Image or iconAsset
         local tabBtn = Instance.new("TextButton")
         tabBtn.Parent = sidebar
         tabBtn.BackgroundColor3 = window.Theme.Sidebar
@@ -4044,13 +4096,21 @@ function SynergyUI:CreateWindow(options)
         activeIndicator.Size = UDim2.new(0, 3, 0.7, 0)
         activeIndicator.Visible = false
         addCorner(activeIndicator, 999)
-        if iconAsset and iconAsset ~= "" then
+        if iconImage and iconImage ~= "" then
             local iconLabel = Instance.new("ImageLabel")
             iconLabel.Parent = tabBtn
             iconLabel.BackgroundTransparency = 1
             iconLabel.Position = UDim2.new(0, 16, 0.5, -10)
             iconLabel.Size = UDim2.new(0, 20, 0, 20)
-            iconLabel.Image = iconAsset
+            iconLabel.Image = iconImage
+            if type(iconAsset) == "table" then
+                if iconAsset.ImageRectPosition then
+                    iconLabel.ImageRectOffset = iconAsset.ImageRectPosition
+                end
+                if iconAsset.ImageRectSize then
+                    iconLabel.ImageRectSize = iconAsset.ImageRectSize
+                end
+            end
             iconLabel.ImageColor3 = window.Theme.TextMuted
             tabLabel.Position = UDim2.new(0, 46, 0, 0)
             tabLabel.Size = UDim2.new(1, -46, 1, 0)
