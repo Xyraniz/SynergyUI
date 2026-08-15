@@ -1,28 +1,79 @@
 # SynergyUI
 
-SynergyUI es una biblioteca de interfaces para Roblox escrita en Lua. Proporciona ventanas arrastrables y redimensionables, tabs, controles con flags, persistencia en JSON, temas, localización, notificaciones, diálogos y resolución de iconos.
+**SynergyUI** es una biblioteca de interfaces para Roblox escrita en Lua. Su API está organizada alrededor de ventanas, tabs y controles configurables, con soporte para temas, iconos, localización, flags, persistencia y overlays.
 
+> **Documentación:** [xyraniz.github.io/SynergyUI](https://xyraniz.github.io/SynergyUI/)
 
-## Documentation
+## Inicio rápido
 
-La documentación completa está en [`web/`](web/index.html). También puede servirse localmente como sitio estático:
+Carga la implementación publicada en la rama `main` y conserva el resultado en la variable `SynergyUI`. Este es el loader que utiliza la documentación oficial:
 
-```bash
-cd web
-python3 -m http.server 8080
+```lua
+local SynergyUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Xyraniz/SynergyUI/main/dist/main.lua"))()
 ```
 
-Abre `http://localhost:8080/` y comienza por el [Quickstart](web/examples.html). La referencia de componentes incluye todos los builders expuestos por `CreateTab`, sus opciones, callbacks, valores iniciales y métodos de flag.
+Después puedes crear una ventana, un tab y tu primer control:
 
-## Repository layout
+```lua
+local Window = SynergyUI:CreateWindow({
+    Title = "Mi primera ventana",
+})
 
-| Path | Purpose |
+local MainTab = Window:CreateTab("Main")
+
+MainTab:CreateButton({
+    Name = "Say hello",
+    Callback = function()
+        SynergyUI:Notify("Hello from SynergyUI")
+    end,
+})
+```
+
+El loader requiere un entorno Roblox que permita realizar la solicitud HTTP y ejecutar el código Lua descargado. La documentación incluye ejemplos completos y contratos detallados para cada método.
+
+## Qué incluye
+
+| Área | Capacidades |
 | --- | --- |
-| [`dist/main.lua`](dist/main.lua) | Implementación principal de SynergyUI. |
-| [`src/Icons/`](src/Icons/) | Catálogos de iconos cargables desde `CreateWindow`. |
-| [`web/`](web/index.html) | Sitio de documentación estática. |
-| [`.github/workflows/docs.yml`](.github/workflows/docs.yml) | Validación automática de la documentación en pushes y pull requests. |
+| Ventanas | Ventanas arrastrables y redimensionables, minimizar, tecla de alternancia, ciclo de vida y overlays. |
+| Navegación | Tabs con iconos y un objeto de elementos para construir cada sección. |
+| Controles | Labels, secciones, separadores, botones, toggles, checkboxes, sliders, progress bars, dropdowns, checklists, inputs, keybinds, color pickers, radio groups, imágenes y vídeo. |
+| Estado | Flags para leer y cambiar valores desde fuera de la UI, callbacks y persistencia en JSON. |
+| Apariencia | Temas incluidos, color de acento, temas personalizados y sistema semántico de colores. |
+| Utilidades | Notificaciones, notificaciones del juego, diálogos `Alert`, `Confirm` y `Prompt`, además de localización. |
+| Iconos | Sets `solar`, `lucide`, `geist` y otros catálogos documentados, con nombres, asset IDs y descriptores de spritesheet. |
 
-## License
+## Documentación
 
-Consulta [`LICENSE`](LICENSE) para los términos de uso.
+La documentación pública vive en [https://xyraniz.github.io/SynergyUI/](https://xyraniz.github.io/SynergyUI/). El recorrido recomendado es:
+
+1. [Quickstart](https://xyraniz.github.io/SynergyUI/examples.html) para copiar un ejemplo básico o completo.
+2. [Components](https://xyraniz.github.io/SynergyUI/components.html) para consultar opciones, callbacks y valores iniciales.
+3. [Global API](https://xyraniz.github.io/SynergyUI/api.html) para ventanas, notificaciones, diálogos y utilidades globales.
+4. [Themes](https://xyraniz.github.io/SynergyUI/themes.html), [Icon catalog](https://xyraniz.github.io/SynergyUI/icons.html) y [Localization](https://xyraniz.github.io/SynergyUI/localization.html) para personalizar la experiencia.
+5. [Runtime notes](https://xyraniz.github.io/SynergyUI/reference.html) para persistencia, geometría, overlays, limpieza y límites del runtime.
+
+## Estructura del repositorio
+
+| Ruta | Propósito |
+| --- | --- |
+| [`dist/main.lua`](dist/main.lua) | Implementación distribuible de SynergyUI. |
+| [`web/`](web/index.html) | Fuente de la documentación pública estática. |
+| [`web/api.json`](web/api.json) | Índice estructurado de métodos, builders, temas y persistencia. |
+| [`web/icons.json`](web/icons.json) | Catálogo generado de las entradas de iconos. |
+| [`tools_build_icon_catalog.py`](tools_build_icon_catalog.py) | Generador del catálogo de iconos a partir de los archivos fuente. |
+| [`.github/workflows/docs.yml`](.github/workflows/docs.yml) | Validación y despliegue automático de GitHub Pages. |
+
+## Desarrollo de la documentación
+
+Los cambios de documentación se realizan dentro de `web/`. El workflow de GitHub Actions comprueba que existan las páginas requeridas, valida las referencias HTML y verifica que el catálogo de iconos generado esté actualizado. Cuando los cambios llegan a `main`, GitHub Pages publica la carpeta `web/` en el sitio oficial.
+
+Si cambias los catálogos de iconos, regenera `web/icons.json` con:
+
+```bash
+python3 tools_build_icon_catalog.py
+```
+
+## Licencia
+
+Consulta [`LICENSE`](LICENSE) para conocer los términos de uso del proyecto.

@@ -110,7 +110,7 @@
         renderIcons();
       })
       .catch(() => {
-        iconGrid.innerHTML = '<div class="icon-empty">No se pudo cargar <code>icons.json</code>. Sirve la carpeta con un servidor local para habilitar el catálogo.</div>';
+        iconGrid.innerHTML = '<div class="icon-empty">No se pudo cargar <code>icons.json</code>. Vuelve a abrir la documentación pública o revisa la conexión.</div>';
       });
     const renderIcons = () => {
       if (!catalog) return;

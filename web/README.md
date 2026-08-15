@@ -1,45 +1,34 @@
-# SynergyUI documentation
+# Documentación de SynergyUI
 
-Esta carpeta contiene una documentación estática de SynergyUI. La entrada es `index.html`; el estilo vive en `styles.css`, la interacción en `app.js` y los contratos estructurados en `api.json`. Las páginas están separadas por área para que la navegación sea directa: quickstart, API global, componentes, temas, iconos, localización y notas de runtime.
+Esta carpeta contiene la documentación estática publicada en [xyraniz.github.io/SynergyUI](https://xyraniz.github.io/SynergyUI/). Está organizada como un sitio sin dependencias de runtime: cada página enlaza directamente con las demás y el catálogo interactivo de iconos consume el `icons.json` versionado junto al sitio.
 
-## Servir localmente
+## Contenido
 
-La página principal puede abrirse directamente desde el sistema de archivos. Para habilitar el catálogo interactivo de iconos, sirve la carpeta con cualquier servidor HTTP estático, porque el navegador bloquea `fetch("icons.json")` en algunos contextos `file://`.
+| Archivo | Propósito |
+| --- | --- |
+| [`index.html`](index.html) | Presentación general, modelo mental y mapa del repositorio. |
+| [`examples.html`](examples.html) | Loader oficial, ejemplo básico y ejemplo completo con flags, temas y controles. |
+| [`api.html`](api.html) | Métodos globales, ventanas, notificaciones y diálogos. |
+| [`components.html`](components.html) | Constructores de tabs y contratos de cada control. |
+| [`themes.html`](themes.html) | Temas incluidos, colores semánticos, métricas, motion y temas personalizados. |
+| [`icons.html`](icons.html) | Sets de iconos, uso en tabs y catálogo navegable. |
+| [`localization.html`](localization.html) | Diccionarios, fallback y claves con prefijo `@`. |
+| [`reference.html`](reference.html) | Persistencia, geometría, overlays, cleanup y límites del runtime. |
+| [`api.json`](api.json) | Índice estructurado de la API documentada. |
+| [`icons.json`](icons.json) | Inventario generado de nombres, asset IDs y descriptores de iconos. |
+| [`styles.css`](styles.css) | Sistema visual, accesibilidad y responsive layout. |
+| [`app.js`](app.js) | Navegación móvil, búsqueda, copiado, tabs y catálogo interactivo. |
 
-```bash
-cd web
-python3 -m http.server 8080
-```
+## Fuente de verdad
 
-Después abre `http://localhost:8080/`.
-
-## Regenerar el catálogo
-
-`icons.json` se genera desde los seis archivos bajo `src/Icons/*/Icons.lua`. El script auxiliar está en la raíz del repositorio como `tools_build_icon_catalog.py` y no forma parte de la interfaz pública.
+La implementación documentada es [`../dist/main.lua`](../dist/main.lua). Los catálogos de iconos se derivan de los archivos fuente bajo `src/Icons/*/Icons.lua`. Cuando cambia la API, actualiza primero las páginas y los contratos afectados; después regenera el catálogo si también cambiaron los iconos.
 
 ```bash
 python3 tools_build_icon_catalog.py
 ```
 
-El proceso conserva nombres, asset IDs y descriptores de spritesheet cuando están presentes. La página `icons.html` limita el render inicial a 180 resultados visibles para mantener fluida la navegación, pero muestra el total de coincidencias.
+El workflow de GitHub Actions comprueba los archivos requeridos, valida los enlaces internos y confirma que `icons.json` coincide con sus fuentes. Los pushes a `main` publican automáticamente esta carpeta en la web oficial.
 
-## Estructura
+## Diseño responsive
 
-| Archivo | Propósito |
-| --- | --- |
-| `index.html` | Presentación, mapa conceptual y enlaces de entrada. |
-| `examples.html` | Ejemplos Basic y Full, incluyendo configuración con flags. |
-| `api.html` | Métodos globales, ventana, notificaciones y diálogos. |
-| `components.html` | Constructores de tabs y contratos de cada control. |
-| `themes.html` | Presets, esquema semántico, métricas, motion y temas custom. |
-| `icons.html` | Carga de sets, uso en tabs y catálogo navegable. |
-| `localization.html` | Diccionarios, fallback y claves `@Key`. |
-| `reference.html` | Persistencia, geometría, overlays, cleanup y límites. |
-| `api.json` | Índice estructurado de métodos, builders, temas y persistencia. |
-| `icons.json` | Inventario generado de las entradas de iconos. |
-| `styles.css` | Sistema visual responsive y accesible. |
-| `app.js` | Búsqueda, navegación móvil, copiado, tabs y catálogo. |
-
-## Fuente
-
-La implementación documentada es `dist/main.lua`. Los nombres de iconos proceden de `src/Icons`. Si la API cambia, actualiza primero los contratos de las páginas afectadas y después vuelve a generar `icons.json`.
+El sitio está pensado con un enfoque mobile-first para **teléfonos, tablets y equipos de escritorio**. La navegación lateral se convierte en un menú accesible en pantallas pequeñas, las cuadrículas se apilan progresivamente y los bloques de código y tablas conservan su propio desplazamiento interno cuando el contenido es más ancho que la pantalla. El documento raíz evita desbordamientos horizontales para que la página no se aleje ni muestre una franja vacía lateral en dispositivos táctiles.
