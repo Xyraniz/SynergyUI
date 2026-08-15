@@ -81,7 +81,7 @@ elements:<span class="code-call">CreateToggle</span>({
         <div class="section-header"><h2>Two paths in</h2><p>Empieza con el mínimo que renderiza una UI funcional o salta al patrón completo con configuración, flags y varios controles.</p></div>
         <div class="grid-2">
           <div class="card"><h3>Basic example</h3><p>La ruta más corta: ventana, tab y un control. Ideal para comprobar que la librería está cargada.</p><a class="btn" style="margin-top:16px" href="examples.html#basic">View Basic →</a></div>
-          <div class="card accent-violet"><h3>Full example</h3><p>Una base más realista con tema, persistencia, iconos, sliders, dropdown multi-select, color picker y lifecycle.</p><a class="btn secondary" style="margin-top:16px" href="examples.html#full">View Full →</a></div>
+          <div class="card accent-violet"><h3>Full example</h3><p>Una base más realista con tema, persistencia, iconos, slider, dropdown single-select con <code>CurrentOption</code>, color picker y lifecycle.</p><a class="btn secondary" style="margin-top:16px" href="examples.html#full">View Full →</a></div>
         </div>
       </section>
 
@@ -112,6 +112,7 @@ elements:<span class="code-call">CreateToggle</span>({
           <tr><td><code>src/Icons/&lt;set&gt;/Icons.lua</code></td><td>Catálogos de nombres y asset IDs para tabs.</td><td>Necesitas elegir, buscar o cargar varios icon sets.</td></tr>
           <tr><td><code>web/index.html</code></td><td>Entrada editorial y mapa de conceptos.</td><td>Quieres entender el sistema antes de copiar código.</td></tr>
           <tr><td><code>web/api.html</code> · <code>components.html</code></td><td>Referencia operativa por contrato.</td><td>Estás implementando o corrigiendo una integración.</td></tr>
+          <tr><td><code>llms.txt</code> · <code>web/llms.txt</code></td><td>Contrato completo legible por máquinas, con firmas, defaults, retornos y prioridades.</td><td>Vas a generar código o necesitas consultar toda la API en un solo fetch.</td></tr>
           <tr><td><code>.github/workflows/docs.yml</code></td><td>Verificación estática de la carpeta web.</td><td>Quieres revisar el cambio automáticamente en cada push/PR.</td></tr>
         </tbody></table></div>
       </section>

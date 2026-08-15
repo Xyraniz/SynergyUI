@@ -15,19 +15,20 @@ Esta carpeta contiene la documentación estática publicada en [xyraniz.github.i
 | [`localization.html`](localization.html) | Diccionarios, fallback y claves con prefijo `@`. |
 | [`reference.html`](reference.html) | Persistencia, geometría, overlays, cleanup y límites del runtime. |
 | [`api.json`](api.json) | Índice estructurado de la API documentada. |
+| [`llms.txt`](llms.txt) | Copia publicada del contrato AI-readable canónico de la raíz. |
 | [`icons.json`](icons.json) | Inventario generado de nombres, asset IDs y descriptores de iconos. |
 | [`styles.css`](styles.css) | Sistema visual, accesibilidad y responsive layout. |
 | [`app.js`](app.js) | Navegación móvil, búsqueda, copiado, tabs y catálogo interactivo. |
 
 ## Fuente de verdad
 
-La implementación documentada es [`../dist/main.lua`](../dist/main.lua). Los catálogos de iconos se derivan de los archivos fuente bajo `src/Icons/*/Icons.lua`. Cuando cambia la API, actualiza primero las páginas y los contratos afectados; después regenera el catálogo si también cambiaron los iconos.
+La implementación documentada es [`../dist/main.lua`](../dist/main.lua). El contrato AI-readable canónico es [`../llms.txt`](../llms.txt), y `web/llms.txt` debe ser una copia idéntica para su publicación. Los catálogos de iconos se derivan de los archivos fuente bajo `src/Icons/*/Icons.lua`. Cuando cambia la API, actualiza primero las páginas y los contratos afectados; después regenera el catálogo si también cambiaron los iconos.
 
 ```bash
 python3 tools_build_icon_catalog.py
 ```
 
-El workflow de GitHub Actions comprueba los archivos requeridos, valida los enlaces internos y confirma que `icons.json` coincide con sus fuentes. Los pushes a `main` publican automáticamente esta carpeta en la web oficial.
+El workflow de GitHub Actions comprueba los archivos requeridos, valida los enlaces internos, confirma que `icons.json` coincide con sus fuentes y verifica que `../llms.txt` y `llms.txt` sean idénticos. Los pushes a `main` publican automáticamente esta carpeta en la web oficial.
 
 ## Diseño responsive
 

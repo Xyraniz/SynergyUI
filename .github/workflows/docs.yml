@@ -7,12 +7,14 @@ on:
       - 'web/**'
       - 'src/Icons/**'
       - 'tools_build_icon_catalog.py'
+      - 'llms.txt'
       - '.github/workflows/docs.yml'
   pull_request:
     paths:
       - 'web/**'
       - 'src/Icons/**'
       - 'tools_build_icon_catalog.py'
+      - 'llms.txt'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -44,7 +46,9 @@ jobs:
           test -s web/styles.css
           test -s web/app.js
           test -s web/api.json
+          test -s llms.txt
           test -s web/llms.txt
+          cmp -s llms.txt web/llms.txt
           for page in examples api components themes icons localization reference; do
             test -s "web/${page}.html"
           done

@@ -2600,13 +2600,14 @@ function ControlFactory:createParagraph(options)
             imgDesc.TextWrapped = true
         end
     end
+    local paragraphContent = options.Content or ""
     local content = Instance.new("TextLabel")
     content.Parent = frame
     content.BackgroundTransparency = 1
     content.Position = UDim2.new(0, self.theme.PaddingHorizontal, 0, self.theme.PaddingVertical + 0)
     content.Size = UDim2.new(1, -2 * self.theme.PaddingHorizontal, 0, 0)
     content.Font = self.theme.Font
-    content.Text = options.Content or ""
+    content.Text = paragraphContent
     content.TextColor3 = self.theme.TextMuted
     content.TextSize = self.theme.TextSizeSmall
     content.TextWrapped = true
@@ -2631,7 +2632,7 @@ function ControlFactory:createParagraph(options)
             imageSpacing = 12
         end
         local contentY = self.theme.PaddingVertical + titleHeight + (titleHeight > 0 and 8 or 0) + imageHeight + imageSpacing
-        local contentHeight = TextService:GetTextSize(options.Content, self.theme.TextSizeSmall, self.theme.Font, Vector2.new(frame.AbsoluteSize.X - 2 * self.theme.PaddingHorizontal, 9999)).Y
+        local contentHeight = TextService:GetTextSize(paragraphContent, self.theme.TextSizeSmall, self.theme.Font, Vector2.new(frame.AbsoluteSize.X - 2 * self.theme.PaddingHorizontal, 9999)).Y
         content.Position = UDim2.new(0, self.theme.PaddingHorizontal, 0, contentY)
         content.Size = UDim2.new(1, -2 * self.theme.PaddingHorizontal, 0, contentHeight)
         local totalHeight = contentY + contentHeight + self.theme.PaddingVertical
@@ -3978,7 +3979,7 @@ function SynergyUI:CreateWindow(options)
         contentArea.Visible = false
         resizeHandle.Visible = false
     end
-    window.SetToggleKey = function(keyName)
+    function window:SetToggleKey(keyName)
         if keyName == "None" then
             window.ToggleKey = nil
         else
@@ -4617,13 +4618,13 @@ function SynergyUI:CreateWindow(options)
                 local originalCallback = opts.Callback
                 opts.Callback = function(v)
                     if originalCallback then pcall(originalCallback, v) end
-                    window.SetToggleKey(v)
+                    window:SetToggleKey(v)
                 end
             end
             local flagObj, conns = originalCreateKeybind(self, opts)
             if opts.Flag == "Keybind" then
                 local currentVal = flagObj.GetValue()
-                window.SetToggleKey(currentVal)
+                window:SetToggleKey(currentVal)
             end
             return flagObj, conns
         end

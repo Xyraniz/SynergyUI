@@ -52,7 +52,7 @@ La documentación pública vive en [https://xyraniz.github.io/SynergyUI/](https:
 3. [Global API](https://xyraniz.github.io/SynergyUI/api.html) para ventanas, notificaciones, diálogos y utilidades globales.
 4. [Themes](https://xyraniz.github.io/SynergyUI/themes.html), [Icon catalog](https://xyraniz.github.io/SynergyUI/icons.html) y [Localization](https://xyraniz.github.io/SynergyUI/localization.html) para personalizar la experiencia.
 5. [Runtime notes](https://xyraniz.github.io/SynergyUI/reference.html) para persistencia, geometría, overlays, limpieza y límites del runtime.
-6. [AI-readable reference](https://xyraniz.github.io/SynergyUI/llms.txt) para firmas completas, opciones, retornos, prioridades y reglas de carga.
+6. [AI-readable reference](https://xyraniz.github.io/SynergyUI/llms.txt) para firmas completas, opciones, retornos, prioridades y reglas de carga. El mismo contrato está disponible en [`llms.txt`](llms.txt) en la raíz del repositorio.
 
 ## Estructura del repositorio
 
@@ -61,14 +61,15 @@ La documentación pública vive en [https://xyraniz.github.io/SynergyUI/](https:
 | [`dist/main.lua`](dist/main.lua) | Implementación distribuible de SynergyUI. |
 | [`web/`](web/index.html) | Fuente de la documentación pública estática. |
 | [`web/api.json`](web/api.json) | Índice estructurado de métodos, builders, temas y persistencia. |
-| [`web/llms.txt`](web/llms.txt) | Referencia completa y legible por máquinas de la API y el runtime. |
+| [`llms.txt`](llms.txt) | Referencia canónica completa y legible por máquinas de la API y el runtime. |
+| [`web/llms.txt`](web/llms.txt) | Copia publicada de la referencia AI-readable; debe permanecer sincronizada con la raíz. |
 | [`web/icons.json`](web/icons.json) | Catálogo generado de las entradas de iconos. |
 | [`tools_build_icon_catalog.py`](tools_build_icon_catalog.py) | Generador del catálogo de iconos a partir de los archivos fuente. |
 | [`.github/workflows/docs.yml`](.github/workflows/docs.yml) | Validación y despliegue automático de GitHub Pages. |
 
 ## Desarrollo de la documentación
 
-Los cambios de documentación se realizan dentro de `web/`. El workflow de GitHub Actions comprueba que existan las páginas requeridas, valida las referencias HTML y verifica que el catálogo de iconos generado esté actualizado. Cuando los cambios llegan a `main`, GitHub Pages publica la carpeta `web/` en el sitio oficial.
+Los cambios de documentación se realizan dentro de `web/`; la referencia AI-readable canónica vive también en `llms.txt` y su copia publicada en `web/llms.txt`. El workflow de GitHub Actions comprueba que existan las páginas requeridas, valida las referencias HTML, verifica que ambas referencias AI-readable sean idénticas y confirma que el catálogo de iconos generado esté actualizado. Cuando los cambios llegan a `main`, GitHub Pages publica la carpeta `web/` en el sitio oficial.
 
 Si cambias los catálogos de iconos, regenera `web/icons.json` con:
 

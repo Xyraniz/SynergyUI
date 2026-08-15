@@ -41,14 +41,15 @@ Window:<span class="code-call">OnOpen</span>(<span class="code-key">function</sp
 Main:<span class="code-call">CreateSection</span>(<span class="code-string">"Runtime"</span>)
 Main:<span class="code-call">CreateLabel</span>(<span class="code-string">"Changes are saved automatically."</span>)
 
-<span class="code-key">local</span> enabled = Main:<span class="code-call">CreateToggle</span>({
+Main:<span class="code-call">CreateToggle</span>({
   Name = <span class="code-string">"Enable feature"</span>,
   Flag = <span class="code-string">"FeatureEnabled"</span>,
   CurrentValue = <span class="code-key">true</span>,
   Callback = <span class="code-key">function</span>(value) print(<span class="code-string">"enabled:"</span>, value) <span class="code-key">end</span>,
 })
+<span class="code-key">local</span> enabled = Window.Flags.FeatureEnabled
 
-<span class="code-key">local</span> strength = Main:<span class="code-call">CreateSlider</span>({
+Main:<span class="code-call">CreateSlider</span>({
   Name = <span class="code-string">"Strength"</span>,
   Flag = <span class="code-string">"Strength"</span>,
   Range = { 0, 100 },
@@ -56,6 +57,7 @@ Main:<span class="code-call">CreateLabel</span>(<span class="code-string">"Chang
   CurrentValue = 50,
   Callback = <span class="code-key">function</span>(value) print(value) <span class="code-key">end</span>,
 })
+<span class="code-key">local</span> strength = Window.Flags.Strength
 
 <span class="code-key">local</span> mode = Main:<span class="code-call">CreateDropdown</span>({
   Name = <span class="code-string">"Mode"</span>,
