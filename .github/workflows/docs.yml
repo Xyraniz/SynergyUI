@@ -44,6 +44,7 @@ jobs:
           test -s web/styles.css
           test -s web/app.js
           test -s web/api.json
+          test -s web/llms.txt
           for page in examples api components themes icons localization reference; do
             test -s "web/${page}.html"
           done

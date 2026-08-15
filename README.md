@@ -52,6 +52,7 @@ La documentación pública vive en [https://xyraniz.github.io/SynergyUI/](https:
 3. [Global API](https://xyraniz.github.io/SynergyUI/api.html) para ventanas, notificaciones, diálogos y utilidades globales.
 4. [Themes](https://xyraniz.github.io/SynergyUI/themes.html), [Icon catalog](https://xyraniz.github.io/SynergyUI/icons.html) y [Localization](https://xyraniz.github.io/SynergyUI/localization.html) para personalizar la experiencia.
 5. [Runtime notes](https://xyraniz.github.io/SynergyUI/reference.html) para persistencia, geometría, overlays, limpieza y límites del runtime.
+6. [AI-readable reference](https://xyraniz.github.io/SynergyUI/llms.txt) para firmas completas, opciones, retornos, prioridades y reglas de carga.
 
 ## Estructura del repositorio
 
@@ -60,6 +61,7 @@ La documentación pública vive en [https://xyraniz.github.io/SynergyUI/](https:
 | [`dist/main.lua`](dist/main.lua) | Implementación distribuible de SynergyUI. |
 | [`web/`](web/index.html) | Fuente de la documentación pública estática. |
 | [`web/api.json`](web/api.json) | Índice estructurado de métodos, builders, temas y persistencia. |
+| [`web/llms.txt`](web/llms.txt) | Referencia completa y legible por máquinas de la API y el runtime. |
 | [`web/icons.json`](web/icons.json) | Catálogo generado de las entradas de iconos. |
 | [`tools_build_icon_catalog.py`](tools_build_icon_catalog.py) | Generador del catálogo de iconos a partir de los archivos fuente. |
 | [`.github/workflows/docs.yml`](.github/workflows/docs.yml) | Validación y despliegue automático de GitHub Pages. |

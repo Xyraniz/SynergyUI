@@ -1,0 +1,260 @@
+# SynergyUI — AI-readable API reference
+
+SynergyUI is a Roblox Lua UI library. The public object graph is `SynergyUI → Window → elements`. The implementation source is [`dist/main.lua`](../dist/main.lua) and the machine-readable index is [`api.json`](api.json).
+
+## Official loader
+
+The distributed implementation is a Lua chunk that returns the `SynergyUI` table. It is not a Roblox `ModuleScript` loaded with `require`; the supported documentation flow downloads the raw file and executes it with `loadstring`:
+
+```lua
+local SynergyUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Xyraniz/SynergyUI/main/dist/main.lua"))()
+```
+
+The loader requires an environment that permits the HTTP request and Lua execution. The URL tracks the repository `main` branch.
+
+## Global API
+
+```lua
+SynergyUI:CreateWindow(options) -> Window
+SynergyUI:Notify(options: table|string) -> nil
+SynergyUI:CreateGameNotification(options: table) -> nil
+SynergyUI:Alert(options: table|string) -> Dialog
+SynergyUI:Confirm(options: table|string) -> Dialog
+SynergyUI:Prompt(options: table|string) -> Dialog
+SynergyUI:AddTranslations(language: string, translations: table) -> boolean
+SynergyUI:SetLanguage(language: string) -> boolean
+SynergyUI:GetLanguage() -> string
+SynergyUI:GetTranslations() -> table
+SynergyUI:Localization(config: table) -> boolean
+SynergyUI:Locations(config: table) -> boolean -- alias of Localization
+SynergyUI.Localize(value: any) -> any
+SynergyUI:RegisterTheme(name: string, theme: table) -> boolean
+SynergyUI:GetThemes() -> array<string> -- sorted
+SynergyUI:GetTheme(name: string) -> table|nil -- normalized clone
+```
+
+`Notify` accepts either a message string or a table with `Message`, `Type` (`info`, `done`, `error`, `warning`), `Duration`, `Position`, `TypeColor`, `Parent`, and optional `Callback`. `CreateGameNotification` accepts `Parent`, `Image`, `Title`, `MiniTitle`, `Description`, `YesText`, `NoText`, `YesCallback`, and `NoCallback`.
+
+`Localization` accepts `FallbackLanguage`, `Language`, and `Translations`. `Localize` resolves only strings beginning with `@`; it checks the active language, then the fallback language, then returns the key without `@`.
+
+## CreateWindow
+
+```lua
+local Window = SynergyUI:CreateWindow(options) -> Window
+```
+
+| Option | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `Title` | string | `"Synergy Hub"` | Accepts `@Key` localization references. |
+| `Subtitle` | string? | `nil` | Optional localized subtitle. |
+| `Theme` | string/table | `"Rise"` | Registered theme name or custom theme table. |
+| `AccentColor` | Color3? | `nil` | Overrides the theme accent. |
+| `Background` / `BackgroundAsset` | number/string? | `nil` | Numeric ID, decimal string, or `rbxassetid://...`. |
+| `BackgroundImageTransparency` | number | `0.52` | Clamped to `0..1`. |
+| `BackgroundScaleType` | Enum.ScaleType? | `Enum.ScaleType.Crop` | Non-Enum values fall back to Crop. |
+| `ToggleKey` | Enum.KeyCode/string? | `Enum.KeyCode.RightShift` | Use `"None"` to disable. |
+| `Parent` | Instance? | CoreGui or PlayerGui in Studio | Parent of the ScreenGui. |
+| `ConfigName` | string | `"default_config"` | JSON name under `SynergyUI/Settings`. |
+| `Localization` | table? | `nil` | Initial `FallbackLanguage`, `Language`, and `Translations`. |
+| `Language` | string? | `nil` | Initial global language. |
+| `IconSet` | false/string/array? | all built-in sets | `false` disables loading; string or array selects sets. |
+| `CloseOnEscape` | boolean? | false | When truthy, Escape destroys the window. |
+| `OnOpen` / `OnClose` / `OnDestroy` | function? | `nil` | One-shot lifecycle callbacks. |
+
+A new window starts visible at `560 × 380`. The default configuration name is `default_config`. The window exposes its controls through `Window.Flags`.
+
+## Window methods
+
+```lua
+Window:SetToggleKey(keyName: string) -> Window
+Window:OnOpen(callback: function(Window)) -> Window
+Window:OnClose(callback: function(Window)) -> Window
+Window:OnDestroy(callback: function(Window)) -> Window
+Window:IsOpen() -> boolean
+Window:Open() -> Window
+Window:Close() -> Window
+Window:Toggle() -> Window
+Window:RefreshTheme() -> nil
+Window:SetTitle(value: string) -> nil
+Window:SetSubtitle(value: string|nil) -> nil
+Window:SetBackground(asset: number|string, transparency: number?) -> boolean
+Window:RefreshLocalization() -> nil
+Window:SetLanguage(language: string) -> boolean
+Window:Alert(options: table) -> Dialog
+Window:Confirm(options: table) -> Dialog
+Window:Prompt(options: table) -> Dialog
+Window:SetAccent(color: Color3) -> nil
+Window:SetTheme(themeValue: string|table) -> Window
+Window:Destroy() -> Window
+Window:CreateTab(name: string, icon: string|table|nil) -> Elements
+```
+
+`Window:SetLanguage` delegates to `SynergyUI:SetLanguage`, so it updates all active windows and returns `false` for a non-string argument. `Window:RefreshLocalization` re-resolves registered localized properties and recalculates this window's title layout without changing the active language. `Window:Alert`, `Window:Confirm`, and `Window:Prompt` assign `OwnerWindow` automatically so the dialogs are destroyed with the window.
+
+`Window:SetBackground` removes the current image and returns `false` when the asset is invalid; valid numeric or asset-id strings return `true`. `Window:SetTheme` accepts a registered name or a custom table, normalizes it, refreshes the controls, and persists `__theme` when a registered name is used.
+
+## Elements namespace
+
+`Window:CreateTab(name, icon)` returns an `Elements` namespace. The first created tab becomes active.
+
+### Layout builders
+
+```lua
+Elements:CreateSection(name: string) -> TextLabel
+Elements:CreateLabel(text: string) -> TextLabel
+Elements:CreateSeparator() -> Frame
+Elements:CreateParagraph(options) -> Frame
+Elements:CreateImage(options) -> Frame
+Elements:CreateVideo(options) -> Frame
+```
+
+| Builder | Options | Return |
+| --- | --- | --- |
+| `CreateSection` | `name` | `TextLabel` |
+| `CreateLabel` | `text` | `TextLabel` |
+| `CreateSeparator` | none | `Frame` |
+| `CreateParagraph` | `Title`, `Content`, `Image`, `ImageDescription` | `Frame` with measured height |
+| `CreateImage` | `Title`, `Image`, `Description` | Collapsible `Frame` |
+| `CreateVideo` | `Title`, `Video`, `Looped`, `Volume` | Collapsible `Frame` |
+
+`CreateParagraph` defaults missing title/content/image fields to empty values. `CreateImage` uses `@Image` as its default title. `CreateVideo` uses `@Video`, `Looped = false`, and `Volume = 1`.
+
+### Button
+
+```lua
+Elements:CreateButton(options) -> Frame, RBXScriptConnection
+```
+
+Options are `Name` (required in practice), `Tooltip` (optional), and `Callback` (function). The callback runs on click and is protected with `pcall`. A callback error is surfaced as an error notification.
+
+### Boolean controls
+
+```lua
+Elements:CreateToggle(options) -> Frame, RBXScriptConnection
+Elements:CreateCheckBox(options) -> Frame, RBXScriptConnection
+```
+
+| Option | Type | Default / behavior |
+| --- | --- | --- |
+| `Name` | string | Required label; accepts `@Key`. |
+| `Flag` | string? | Falls back to `Name`. |
+| `CurrentValue` | boolean? | `false` when no valid saved boolean exists. |
+| `Callback` | function? | Receives the boolean value. |
+
+Both flags expose `GetValue() -> boolean` and `SetValue(value: boolean)`. A saved boolean wins over `CurrentValue`. Toggle and CheckBox call the callback during construction only when the initial state is true.
+
+### Slider
+
+```lua
+Elements:CreateSlider(options) -> Frame, array<RBXScriptConnection>
+```
+
+| Option | Type | Default / behavior |
+| --- | --- | --- |
+| `Name` | string | Required label. |
+| `Flag` | string? | Falls back to `Name`. |
+| `Range` | `{ number, number }` | Required; `{ min, max }`. |
+| `Increment` | number? | `1`; rounds drag, numeric input, and `SetValue`. |
+| `CurrentValue` | number? | Range minimum when absent and no saved number exists. |
+| `Callback` | function? | Receives the numeric value. |
+
+The flag exposes `GetValue() -> number` and `SetValue(value: number)`. Saved numeric values are clamped to the range.
+
+### Progress bar
+
+```lua
+Elements:CreateProgressBar(options) -> ProgressFlag
+Elements:CreateProgress(options) -> ProgressFlag -- alias
+```
+
+| Option | Type | Default / behavior |
+| --- | --- | --- |
+| `Name` | string? | `@Progress`. |
+| `Flag` | string? | Falls back to `Name`, then `"Progress"`. |
+| `Range` | `{ number, number }`? | If absent, effective range is `0..100`. |
+| `Min` / `Max` | number? | Alternative to `Range`; `0` and `100` by default. |
+| `CurrentValue` | number? | Range minimum when absent. |
+| `Format` | function(current, ratio)? | Custom value-label formatter. |
+| `ShowPercentage` | boolean? | Adds a rounded percentage suffix. |
+| `ShowValue` | boolean? | `true`; `false` hides the value label. |
+| `Callback` | function? | Receives `(value, ratio)` on updates. |
+
+The flag exposes `GetValue()`, `GetPercentage()`, `SetValue(value)`, and `SetProgress(value)`.
+
+### Dropdown
+
+```lua
+Elements:CreateDropdown(options) -> DropdownFlag, RBXScriptConnection
+```
+
+| Option | Type | Default / behavior |
+| --- | --- | --- |
+| `Name` | string | Required label. |
+| `Flag` | string? | Falls back to `Name`. |
+| `Options` | array<string> | Empty array when absent. |
+| `CurrentOption` | string? | Initial single-select value. |
+| `CurrentSelected` | array<string>? | Initial multi-select values. |
+| `MultiSelect` | boolean? | `false`. |
+| `Searchable` | boolean? | `false`; adds a search field when true. |
+| `Callback` | function? | Single-select receives `value`; multi-select interaction receives `(option, selected)`. |
+
+Single-select priority is saved valid value, then `CurrentOption`, then the first option or `""`. Multi-select priority is saved array, then `CurrentSelected`, then no selections. The flag exposes `GetValue()`, `SetValue(value)`, `AddOption(option)`, `RemoveOption(option)`, `ClearOptions()`, and `Select(value)`. `GetValue` returns a string in single-select mode and an array in multi-select mode.
+
+### Checklist
+
+```lua
+Elements:CreateChecklist(options) -> ChecklistFlag, RBXScriptConnection
+```
+
+Options are `Name`, `Flag`, `Options` (array), `CurrentSelected` (array), and `Callback`. The flag exposes `GetValue() -> array<string>`, `SetValue(values)`, `AddOption(option)`, and `RemoveOption(option)`. It intentionally does not expose `ClearOptions` or `Select`. The implementation calls the callback during the initial build and after `SetValue`, `AddOption`, or `RemoveOption`, because those operations rebuild the list.
+
+### Text and number inputs
+
+```lua
+Elements:CreateTextInput(options) -> TextFlag, RBXScriptConnection
+Elements:CreateNumberInput(options) -> NumberFlag, RBXScriptConnection
+```
+
+`CreateTextInput` accepts `Name`, `Flag`, `CurrentText`, `Placeholder`, and `Callback`; the default text is `""`, and the callback receives the text on focus loss. Its flag exposes `GetValue() -> string` and `SetValue(value: string)`. `SetValue` changes the textbox directly and does not invoke the callback or schedule persistence by itself.
+
+`CreateNumberInput` accepts `Name`, `Flag`, `CurrentValue`, and `Callback`; the default is `0`. It filters input to digits, decimal point, and minus sign, accepts a convertible number on focus loss, and restores the previous value for invalid text. Its flag exposes `GetValue() -> number` and `SetValue(value) -> nil`; `SetValue` updates the text, invokes the callback, and schedules persistence.
+
+### Keybind
+
+```lua
+Elements:CreateKeybind(options) -> KeybindFlag, array<RBXScriptConnection>
+```
+
+Options are `Name`, `Flag`, `CurrentKeybind`, and `Callback`. The default keybind is `"None"`. The control captures keyboard keys and mouse buttons; Escape is stored as `"None"`, and a capture expires after five seconds. The flag exposes `GetValue() -> string` and `SetValue(value: string)`. When `Flag = "Keybind"`, the window toggle key is synchronized with the control.
+
+### Color picker
+
+```lua
+Elements:CreateColorPicker(options) -> ColorFlag, RBXScriptConnection
+```
+
+Options are `Name`, `Flag`, `Color`, and `Callback`. The default color is `Color3.fromRGB(0, 170, 255)`. The flag exposes `GetValue() -> Color3` and `SetValue(color: Color3)`. Rainbow mode updates the color continuously and is stopped when the window is destroyed or when `SetValue` is called. Persisted values use `{ __type = "Color3", r = color.R, g = color.G, b = color.B }`.
+
+### Radio group
+
+```lua
+Elements:CreateRadioGroup(options) -> RadioFlag, nil
+```
+
+Options are `Name`, `Flag`, `Options` (required array), `CurrentValue`, and `Callback`. The flag exposes `GetValue() -> string` and `SetValue(value: string)`. **Priority exception:** a valid `CurrentValue` is checked before the saved flag; only when it is absent or invalid does the saved valid value win, followed by the first option. The initial selection does not invoke the callback.
+
+## Value priority summary
+
+For most flagged controls, a saved value with the expected type wins over the current option. Dropdown also requires a saved selection to exist in its current `Options` list. Control-specific current options are `CurrentValue`, `CurrentOption`, `CurrentSelected`, `CurrentText`, and `CurrentKeybind`. `CreateRadioGroup` is the exception: valid `CurrentValue` wins over a saved flag.
+
+## Persistence and cleanup
+
+When filesystem helpers exist, configuration is stored at `SynergyUI/Settings/<ConfigName>.json`. The optional helpers are `isfolder`, `makefolder`, `isfile`, `readfile`, and `writefile`. Runtime keys include control flags, `__size`, `__minimized`, `__theme`, and legacy `__position` cleanup. `Window:Destroy()` closes dialogs and overlays, disconnects resources, cancels rainbow tasks, removes the window from localization state, and destroys its GUI.
+
+## Themes and icons
+
+Built-in themes are `Rise`, `Dark`, `Cyberpunk`, `TokyoNight`, `Red`, `BloodRed`, `White`, `Ubuntu`, `Glacier`, `Midnight`, `Anime`, `Femboy`, `Hanki`, `Ocean`, `Forest`, and `Sunset`. The icon sets are `lucide`, `gravity`, `craft`, `geist`, `sfsymbols`, and `solar`. Icon loading is optional with `IconSet = false`.
+
+## Source of truth
+
+When this file conflicts with prose elsewhere, verify the current implementation in [`dist/main.lua`](../dist/main.lua) and the structured contracts in [`api.json`](api.json). The public raw loader is [`dist/main.lua` on GitHub](https://raw.githubusercontent.com/Xyraniz/SynergyUI/main/dist/main.lua).
