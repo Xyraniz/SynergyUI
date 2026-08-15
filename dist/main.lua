@@ -210,21 +210,243 @@ local function createTween(instance, duration, properties, style, direction)
     tween:Play()
     return tween
 end
-local function addHoverEffect(button, originalColor, hoverColor, useScale)
+local ConnectionBag = {}
+ConnectionBag.__index = ConnectionBag
+function ConnectionBag.new()
+    return setmetatable({Items = {}, Closed = false}, ConnectionBag)
+end
+function ConnectionBag:Add(item)
+    if item and not self.Closed then
+        table.insert(self.Items, item)
+    end
+    return item
+end
+function ConnectionBag:AddConnection(connection)
+    return self:Add(connection)
+end
+function ConnectionBag:AddCleanup(cleanup)
+    return self:Add(cleanup)
+end
+function ConnectionBag:Cleanup()
+    if self.Closed then return end
+    self.Closed = true
+    for index = #self.Items, 1, -1 do
+        local item = self.Items[index]
+        if type(item) == "function" then
+            pcall(item)
+        elseif item and type(item.Disconnect) == "function" then
+            pcall(function() item:Disconnect() end)
+        elseif item and type(item.Destroy) == "function" then
+            pcall(function() item:Destroy() end)
+        end
+    end
+    self.Items = {}
+end
+
+local OverlayHandle = {}
+OverlayHandle.__index = OverlayHandle
+function OverlayHandle:SetContent(content)
+    if self.Content and self.Content ~= content then
+        self.Content.Parent = nil
+    end
+    self.Content = content
+    if content then
+        content.Parent = self.Frame
+        content.Position = UDim2.new(0, 0, 0, 0)
+        content.Size = UDim2.new(1, 0, 1, 0)
+        content.Visible = true
+    end
+    return self
+end
+function OverlayHandle:GetSize()
+    local width = self.Width
+    local height = self.Height
+    if self.WidthProvider then
+        local ok, value = pcall(self.WidthProvider)
+        if ok and tonumber(value) then width = tonumber(value) end
+    end
+    if self.HeightProvider then
+        local ok, value = pcall(self.HeightProvider)
+        if ok and tonumber(value) then height = tonumber(value) end
+    end
+    width = math.max(self.MinWidth, math.floor(width or self.MinWidth))
+    height = math.max(self.MinHeight, math.floor(height or self.MinHeight))
+    if self.MaxWidth then width = math.min(width, self.MaxWidth) end
+    if self.MaxHeight then height = math.min(height, self.MaxHeight) end
+    return width, height
+end
+function OverlayHandle:UpdatePosition()
+    if self.Destroyed or not self.Anchor or not self.Anchor.Parent or not self.Frame.Parent then return end
+    local camera = workspace.CurrentCamera
+    local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
+    local width, height = self:GetSize()
+    local padding = self.Padding
+    local anchorPosition = self.Anchor.AbsolutePosition
+    local anchorSize = self.Anchor.AbsoluteSize
+    local x = math.clamp(anchorPosition.X, padding, math.max(padding, viewport.X - width - padding))
+    local spaceBelow = viewport.Y - (anchorPosition.Y + anchorSize.Y) - padding
+    local spaceAbove = anchorPosition.Y - padding
+    local y
+    if spaceBelow >= height or spaceBelow >= spaceAbove then
+        y = anchorPosition.Y + anchorSize.Y + padding
+    else
+        y = anchorPosition.Y - height - padding
+    end
+    y = math.clamp(y, padding, math.max(padding, viewport.Y - height - padding))
+    self.Frame.Position = UDim2.fromOffset(x, y)
+    self.Frame.Size = UDim2.fromOffset(width, height)
+end
+function OverlayHandle:Open()
+    if self.Destroyed then return self end
+    self.Manager:CloseOthers(self)
+    self:UpdatePosition()
+    self.Opened = true
+    self.Frame.Visible = true
+    if self.OnOpen then pcall(self.OnOpen, self) end
+    return self
+end
+function OverlayHandle:Close()
+    if self.Destroyed then return self end
+    local wasOpen = self.Opened
+    self.Opened = false
+    self.Frame.Visible = false
+    if wasOpen and self.OnClose then pcall(self.OnClose, self) end
+    return self
+end
+function OverlayHandle:Destroy()
+    if self.Destroyed then return end
+    self:Close()
+    self.Destroyed = true
+    if self.Frame then self.Frame:Destroy() end
+    for index = #self.Manager.Handles, 1, -1 do
+        if self.Manager.Handles[index] == self then
+            table.remove(self.Manager.Handles, index)
+            break
+        end
+    end
+end
+
+local OverlayManager = {}
+OverlayManager.__index = OverlayManager
+function OverlayManager.new(parent, resourceBag)
+    local self = setmetatable({Handles = {}, ResourceBag = resourceBag, Destroyed = false}, OverlayManager)
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "SynergyOverlays_" .. HttpService:GenerateGUID(false)
+    gui.Parent = parent or getDefaultParent()
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    self.Gui = gui
+    if resourceBag then
+        resourceBag:AddCleanup(function() self:Destroy() end)
+    end
+    self:Track(UserInputService.InputBegan:Connect(function(input)
+        if self.Destroyed then return end
+        local point = input.Position
+        if input.KeyCode == Enum.KeyCode.Escape then
+            self:CloseAll()
+            return
+        end
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+        for _, handle in ipairs(self.Handles) do
+            if handle.Opened and handle.CloseOnOutsideClick then
+                local insideOverlay = point.X >= handle.Frame.AbsolutePosition.X and point.X <= handle.Frame.AbsolutePosition.X + handle.Frame.AbsoluteSize.X and point.Y >= handle.Frame.AbsolutePosition.Y and point.Y <= handle.Frame.AbsolutePosition.Y + handle.Frame.AbsoluteSize.Y
+                local insideAnchor = handle.Anchor and point.X >= handle.Anchor.AbsolutePosition.X and point.X <= handle.Anchor.AbsolutePosition.X + handle.Anchor.AbsoluteSize.X and point.Y >= handle.Anchor.AbsolutePosition.Y and point.Y <= handle.Anchor.AbsolutePosition.Y + handle.Anchor.AbsoluteSize.Y
+                if not insideOverlay and not insideAnchor then
+                    handle:Close()
+                end
+            end
+        end
+    end))
+    return self
+end
+function OverlayManager:Track(connection)
+    if self.ResourceBag then self.ResourceBag:AddConnection(connection) end
+    return connection
+end
+function OverlayManager:Create(config)
+    config = config or {}
+    local handle = setmetatable({
+        Manager = self,
+        Kind = config.Kind or "Overlay",
+        Anchor = config.Anchor,
+        Width = config.Width or 220,
+        Height = config.Height or 180,
+        MinWidth = config.MinWidth or 120,
+        MaxWidth = config.MaxWidth,
+        MinHeight = config.MinHeight or 24,
+        MaxHeight = config.MaxHeight or 400,
+        WidthProvider = config.WidthProvider,
+        HeightProvider = config.HeightProvider,
+        Padding = config.Padding or 8,
+        CloseOnOutsideClick = config.CloseOnOutsideClick ~= false,
+        Exclusive = config.Exclusive ~= false,
+        OnOpen = config.OnOpen,
+        OnClose = config.OnClose,
+        Opened = false,
+        Destroyed = false,
+    }, OverlayHandle)
+    local frame = Instance.new("Frame")
+    frame.Name = config.Name or "Overlay"
+    frame.BackgroundTransparency = 1
+    frame.BorderSizePixel = 0
+    frame.Visible = false
+    frame.ZIndex = config.ZIndex or 500
+    frame.Parent = self.Gui
+    handle.Frame = frame
+    table.insert(self.Handles, handle)
+    if handle.Anchor then
+        self:Track(handle.Anchor:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
+            if handle.Opened then handle:UpdatePosition() end
+        end))
+        self:Track(handle.Anchor:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            if handle.Opened then handle:UpdatePosition() end
+        end))
+    end
+    return handle
+end
+function OverlayManager:CloseOthers(active)
+    if not active.Exclusive then return end
+    for _, handle in ipairs(self.Handles) do
+        if handle ~= active and handle.Opened and handle.Kind == active.Kind then
+            handle:Close()
+        end
+    end
+end
+function OverlayManager:CloseAll()
+    for _, handle in ipairs(self.Handles) do
+        if handle.Opened then handle:Close() end
+    end
+end
+function OverlayManager:Destroy()
+    if self.Destroyed then return end
+    self.Destroyed = true
+    for index = #self.Handles, 1, -1 do
+        self.Handles[index]:Destroy()
+    end
+    self.Handles = {}
+    if self.Gui then self.Gui:Destroy() end
+end
+
+local function addHoverEffect(button, originalColor, hoverColor, useScale, connectionBag)
     local scale = nil
     if useScale then
         scale = Instance.new("UIScale")
         scale.Scale = 1
         scale.Parent = button
     end
-    button.MouseEnter:Connect(function()
+    local enterConnection = button.MouseEnter:Connect(function()
         createTween(button, 0.18, {BackgroundColor3 = hoverColor})
         if scale then createTween(scale, 0.18, {Scale = 1.04}) end
     end)
-    button.MouseLeave:Connect(function()
+    local leaveConnection = button.MouseLeave:Connect(function()
         createTween(button, 0.18, {BackgroundColor3 = originalColor})
         if scale then createTween(scale, 0.18, {Scale = 1}) end
     end)
+    if connectionBag then
+        connectionBag:AddConnection(enterConnection)
+        connectionBag:AddConnection(leaveConnection)
+    end
 end
 local function createChevron(parent, color)
     local holder = Instance.new("Frame")
@@ -821,7 +1043,7 @@ function SynergyUI:Prompt(options)
 end
 
 local ControlFactory = {}
-function ControlFactory:new(parent, theme, updateThemeCallback, configHandler)
+function ControlFactory:new(parent, theme, updateThemeCallback, configHandler, overlayManager, connectionBag)
     local obj = {}
     obj.parent = parent
     obj.theme = theme
@@ -830,8 +1052,21 @@ function ControlFactory:new(parent, theme, updateThemeCallback, configHandler)
     obj.connections = {}
     obj.configHandler = configHandler
     obj.createdControls = {}
+    obj.overlayManager = overlayManager
+    obj.connectionBag = connectionBag
     setmetatable(obj, { __index = ControlFactory })
     return obj
+end
+function ControlFactory:track(item)
+    if type(item) == "table" then
+        for _, value in ipairs(item) do self:track(value) end
+        return item
+    end
+    if item then
+        if self.connections then table.insert(self.connections, item) end
+        if self.connectionBag then self.connectionBag:AddConnection(item) end
+    end
+    return item
 end
 function ControlFactory:createLabel(text)
     local frame = Instance.new("Frame")
@@ -996,7 +1231,7 @@ function ControlFactory:createButton(options)
     bindLocalizedText(btn, "Text", options.Name)
     btn.TextColor3 = self.theme.Text
     btn.TextSize = self.theme.TextSizeNormal
-    addHoverEffect(btn, self.theme.Element, self.theme.HoverColor, true)
+    addHoverEffect(btn, self.theme.Element, self.theme.HoverColor, true, self.connectionBag)
     local connection = btn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             local x = input.Position.X - btn.AbsolutePosition.X
@@ -1034,8 +1269,8 @@ function ControlFactory:createButton(options)
             tooltip.Size = UDim2.new(0, txtW + 18, 0, 24)
         end)
         local hide = btn.MouseLeave:Connect(function() tooltip.Visible = false end)
-        table.insert(self.connections, show)
-        table.insert(self.connections, hide)
+        self:track(show)
+        self:track(hide)
     end
     table.insert(self.createdControls, {type = "button", frame = frame, btn = btn, tooltip = options.Tooltip})
     return frame, connection
@@ -1104,7 +1339,7 @@ function ControlFactory:createToggle(options)
     self.controls[flag] = flagObj
     local connection = btn.MouseButton1Click:Connect(function() update(not state) end)
     if state then pcall(options.Callback, state) end
-    table.insert(self.createdControls, {type = "toggle", frame = frame, label = label, outer = outer, inner = inner, btn = btn, stateVar = state, update = update})
+    table.insert(self.createdControls, {type = "toggle", frame = frame, label = label, outer = outer, inner = inner, btn = btn, getState = function() return state end, update = update})
     return frame, connection
 end
 function ControlFactory:createCheckBox(options)
@@ -1172,7 +1407,7 @@ function ControlFactory:createCheckBox(options)
     self.controls[flag] = flagObj
     local connection = btn.MouseButton1Click:Connect(function() update(not state) end)
     if state then pcall(options.Callback, state) end
-    table.insert(self.createdControls, {type = "checkbox", frame = frame, label = label, checkFrame = checkFrame, checkIcon = checkIcon, btn = btn, stateVar = state})
+    table.insert(self.createdControls, {type = "checkbox", frame = frame, label = label, checkFrame = checkFrame, checkIcon = checkIcon, btn = btn, getState = function() return state end})
     return frame, connection
 end
 function ControlFactory:createSlider(options)
@@ -1274,9 +1509,9 @@ function ControlFactory:createSlider(options)
     numInput.TextColor3 = self.theme.Text
     numInput.TextSize = self.theme.TextSizeSmall
     numInput.TextXAlignment = Enum.TextXAlignment.Center
-    numInput:GetPropertyChangedSignal("Text"):Connect(function()
+    self:track(numInput:GetPropertyChangedSignal("Text"):Connect(function()
         numInput.Text = numInput.Text:gsub("[^%d%.%-]", "")
-    end)
+    end))
     local dragging = false
     local function move(input)
         local pos = math.clamp((input.Position.X - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
@@ -1413,6 +1648,8 @@ function ControlFactory:createDropdown(options)
     container.ScrollBarThickness = 4
     container.ScrollBarImageColor3 = self.theme.Accent
     container.CanvasSize = UDim2.new(0, 0, 0, 0)
+    addCorner(container, self.theme.CornerRadius)
+    addStroke(container, self.theme.StrokeColor, 1, self.theme.StrokeTransparency)
     if searchable then
         local searchBox = Instance.new("TextBox")
         searchBox.Parent = container
@@ -1436,6 +1673,7 @@ function ControlFactory:createDropdown(options)
     local isOpen = false
     local optionButtons = {}
     local flagObj
+    local dropdownOverlay
     local function getButtonText()
         if multi then
             local count = 0
@@ -1478,7 +1716,7 @@ function ControlFactory:createDropdown(options)
                     addCorner(check, 6)
                     addStroke(check, self.theme.StrokeColor)
                 end
-                optBtn.MouseButton1Click:Connect(function()
+                self:track(optBtn.MouseButton1Click:Connect(function()
                     if multi then
                         selected[opt] = not selected[opt]
                         local checkFrame = optFrame:FindFirstChildWhichIsA("Frame")
@@ -1492,13 +1730,17 @@ function ControlFactory:createDropdown(options)
                         selected = opt
                         updateButtonText()
                         isOpen = false
-                        createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.DropdownHeight)})
-                        container.Size = UDim2.new(1, 0, 0, 0)
+                        if dropdownOverlay then
+                            dropdownOverlay:Close()
+                        else
+                            createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.DropdownHeight)})
+                            container.Size = UDim2.new(1, 0, 0, 0)
+                        end
                         createTween(icon, 0.18, {Rotation = 0})
                         pcall(options.Callback, opt)
                         if self.configHandler then self.configHandler:Set(flag, selected) end
                     end
-                end)
+                end))
                 table.insert(optionButtons, optBtn)
             end
         end
@@ -1508,22 +1750,47 @@ function ControlFactory:createDropdown(options)
     if searchable then
         local searchBox = container:FindFirstChildWhichIsA("TextBox")
         if searchBox then
-            searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+            self:track(searchBox:GetPropertyChangedSignal("Text"):Connect(function()
                 rebuild(searchBox.Text)
-            end)
+            end))
         end
+    end
+    if self.overlayManager then
+        dropdownOverlay = self.overlayManager:Create({
+            Name = "DropdownOverlay",
+            Kind = "Dropdown",
+            Anchor = btn,
+            Width = 220,
+            MaxHeight = 200,
+            HeightProvider = function()
+                return math.min(#optionButtons * self.theme.DropdownItemHeight + (searchable and 40 or 8), 200)
+            end,
+            OnClose = function()
+                isOpen = false
+                createTween(icon, 0.18, {Rotation = 0})
+            end,
+        })
+        dropdownOverlay:SetContent(container)
     end
     local connection = btn.MouseButton1Click:Connect(function()
         isOpen = not isOpen
         if isOpen then
             local expandedHeight = math.min(#optionsList * self.theme.DropdownItemHeight + (searchable and 40 or 8), 200)
             local targetHeight = self.theme.DropdownHeight + expandedHeight
-            createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, targetHeight)})
-            container.Size = UDim2.new(1, 0, 0, expandedHeight)
+            if dropdownOverlay then
+                dropdownOverlay:Open()
+            else
+                createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, targetHeight)})
+                container.Size = UDim2.new(1, 0, 0, expandedHeight)
+            end
             createTween(icon, 0.18, {Rotation = 180})
         else
-            createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.DropdownHeight)})
-            container.Size = UDim2.new(1, 0, 0, 0)
+            if dropdownOverlay then
+                dropdownOverlay:Close()
+            else
+                createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.DropdownHeight)})
+                container.Size = UDim2.new(1, 0, 0, 0)
+            end
             createTween(icon, 0.18, {Rotation = 0})
         end
     end)
@@ -2120,7 +2387,7 @@ function ControlFactory:createColorPicker(options)
         rainbowActive = false
         if rainbowTask then task.cancel(rainbowTask) end
     end
-    rainbowBtn.MouseButton1Click:Connect(function()
+    self:track(rainbowBtn.MouseButton1Click:Connect(function()
         if rainbowActive then
             stopRainbow()
             rainbowBtn.Text = localizedValue("@Rainbow")
@@ -2128,41 +2395,42 @@ function ControlFactory:createColorPicker(options)
             startRainbow()
             rainbowBtn.Text = localizedValue("@Stop")
         end
-    end)
+    end))
+    if self.connectionBag then self.connectionBag:AddCleanup(stopRainbow) end
     local draggingWheel = false
-    colorWheel.InputBegan:Connect(function(input)
+    self:track(colorWheel.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             draggingWheel = true
             updateColorFromWheel(input.Position)
         end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
+    end))
+    self:track(UserInputService.InputChanged:Connect(function(input)
         if draggingWheel and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             updateColorFromWheel(input.Position)
         end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
+    end))
+    self:track(UserInputService.InputEnded:Connect(function(input)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and draggingWheel then
             draggingWheel = false
         end
-    end)
+    end))
     local draggingHue = false
-    hueBar.InputBegan:Connect(function(input)
+    self:track(hueBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             draggingHue = true
             updateHue(input.Position)
         end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
+    end))
+    self:track(UserInputService.InputChanged:Connect(function(input)
         if draggingHue and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             updateHue(input.Position)
         end
-    end)
-    UserInputService.InputEnded:Connect(function(input)
+    end))
+    self:track(UserInputService.InputEnded:Connect(function(input)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and draggingHue then
             draggingHue = false
         end
-    end)
+    end))
     local isOpen = false
     local connection = btn.MouseButton1Click:Connect(function()
         isOpen = not isOpen
@@ -3175,6 +3443,99 @@ local Themes = {
         StrokeTransparency = 0.78,
     },
 }
+local ThemeEngine = {}
+ThemeEngine.DefaultColors = {
+    Canvas = Color3.fromRGB(8, 10, 14),
+    Surface1 = Color3.fromRGB(14, 17, 23),
+    Surface2 = Color3.fromRGB(20, 24, 32),
+    SurfaceHover = Color3.fromRGB(27, 32, 42),
+    Border = Color3.fromRGB(43, 50, 63),
+    TextPrimary = Color3.fromRGB(245, 247, 250),
+    TextSecondary = Color3.fromRGB(157, 166, 181),
+    TextPlaceholder = Color3.fromRGB(112, 122, 140),
+    Accent = Color3.fromRGB(74, 154, 255),
+    AccentHover = Color3.fromRGB(101, 174, 255),
+    AccentPressed = Color3.fromRGB(44, 122, 221),
+    Success = Color3.fromRGB(52, 211, 153),
+    Warning = Color3.fromRGB(251, 191, 36),
+    Danger = Color3.fromRGB(248, 113, 113),
+}
+ThemeEngine.DefaultMetrics = {
+    Radius = 12,
+    Padding = 14,
+    Gap = 7,
+    ControlHeight = 42,
+}
+ThemeEngine.DefaultMotion = {
+    Fast = 0.12,
+    Normal = 0.22,
+    Window = 0.35,
+}
+local function themeColor(theme, colors, semanticName, legacyName, fallback)
+    if colors[semanticName] ~= nil then return colors[semanticName] end
+    if theme[legacyName] ~= nil then return theme[legacyName] end
+    return fallback
+end
+function ThemeEngine:Normalize(theme)
+    theme = theme or {}
+    local colors = theme.Colors or {}
+    for key, value in pairs(self.DefaultColors) do
+        colors[key] = themeColor(theme, colors, key, ({Canvas = "Background", Surface1 = "Element", Surface2 = "ElementDark", SurfaceHover = "HoverColor", Border = "StrokeColor", TextPrimary = "Text", TextSecondary = "TextMuted", TextPlaceholder = "TextMuted", Accent = "Accent"})[key] or key, value)
+    end
+    colors.Primary = colors.Primary or colors.Accent
+    colors.PrimaryHover = colors.PrimaryHover or colors.AccentHover
+    colors.PrimaryPressed = colors.PrimaryPressed or colors.AccentPressed
+    theme.Colors = colors
+    local metrics = theme.Metrics or {}
+    metrics.Radius = metrics.Radius or theme.CornerRadius or self.DefaultMetrics.Radius
+    metrics.Padding = metrics.Padding or theme.PaddingHorizontal or self.DefaultMetrics.Padding
+    metrics.Gap = metrics.Gap or self.DefaultMetrics.Gap
+    metrics.ControlHeight = metrics.ControlHeight or theme.ButtonHeight or self.DefaultMetrics.ControlHeight
+    theme.Metrics = metrics
+    local motion = theme.Motion or {}
+    motion.Fast = motion.Fast or self.DefaultMotion.Fast
+    motion.Normal = motion.Normal or self.DefaultMotion.Normal
+    motion.Window = motion.Window or self.DefaultMotion.Window
+    theme.Motion = motion
+    theme.Background = colors.Canvas
+    theme.Element = colors.Surface1
+    theme.ElementDark = colors.Surface2
+    theme.HoverColor = colors.SurfaceHover
+    theme.StrokeColor = colors.Border
+    theme.Text = colors.TextPrimary
+    theme.TextMuted = colors.TextSecondary
+    theme.Accent = colors.Accent
+    theme.CornerRadius = metrics.Radius
+    theme.PaddingHorizontal = metrics.Padding
+    theme.AnimationFast = motion.Fast
+    theme.AnimationNormal = motion.Normal
+    theme.AnimationWindow = motion.Window
+    return theme
+end
+function ThemeEngine:Clone(theme)
+    return self:Normalize(cloneTable(theme))
+end
+for name, theme in pairs(Themes) do
+    Themes[name] = ThemeEngine:Normalize(theme)
+end
+function SynergyUI:RegisterTheme(name, theme)
+    if type(name) ~= "string" or type(theme) ~= "table" then return false end
+    local normalized = ThemeEngine:Clone(theme)
+    normalized.Name = name
+    Themes[name] = normalized
+    return true
+end
+function SynergyUI:GetThemes()
+    local result = {}
+    for name in pairs(Themes) do table.insert(result, name) end
+    table.sort(result)
+    return result
+end
+function SynergyUI:GetTheme(name)
+    if type(name) ~= "string" or not Themes[name] then return nil end
+    return ThemeEngine:Clone(Themes[name])
+end
+
 local ConfigHandler = {}
 ConfigHandler.__index = ConfigHandler
 function ConfigHandler.new(configName)
@@ -3210,9 +3571,11 @@ function SynergyUI:CreateWindow(options)
     if type(options.Language) == "string" then
         SynergyUI:SetLanguage(options.Language)
     end
-    if type(options.Theme) ~= "string" or not Themes[options.Theme] then
-        options.Theme = "Rise"
+    local requestedTheme = options.Theme
+    if type(requestedTheme) ~= "table" and (type(requestedTheme) ~= "string" or not Themes[requestedTheme]) then
+        requestedTheme = "Rise"
     end
+    local selectedTheme = type(requestedTheme) == "table" and ThemeEngine:Clone(requestedTheme) or ThemeEngine:Clone(Themes[requestedTheme])
     local window = {
         Title = options.Title or "Synergy Hub",
         Subtitle = options.Subtitle,
@@ -3223,11 +3586,16 @@ function SynergyUI:CreateWindow(options)
         Tabs = {},
         Connections = {},
         CurrentTab = nil,
-        Theme = cloneTable(Themes[options.Theme]),
+        Theme = selectedTheme,
         ToggleKey = options.ToggleKey or Enum.KeyCode.RightShift,
         IsVisible = true,
         IsMinimized = false,
-        OnClose = options.OnClose,
+        Destroyed = false,
+        OnOpenCallback = options.OnOpen,
+        OnCloseCallback = options.OnClose,
+        OnDestroyCallback = options.OnDestroy,
+        Lifecycle = {Open = {}, Close = {}, Destroy = {}},
+        Resources = ConnectionBag.new(),
         ConfigName = options.ConfigName or "default_config",
         ConfigHandler = nil,
         AllControls = {}
@@ -3253,7 +3621,7 @@ function SynergyUI:CreateWindow(options)
         configHandler:ScheduleSave()
     end
     if savedConfig.__theme and Themes[savedConfig.__theme] then
-        window.Theme = cloneTable(Themes[savedConfig.__theme])
+        window.Theme = ThemeEngine:Clone(Themes[savedConfig.__theme])
         if options.AccentColor then window.Theme.Accent = options.AccentColor end
     end
     local strokeThickness = 2
@@ -3264,6 +3632,7 @@ function SynergyUI:CreateWindow(options)
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     gui.IgnoreGuiInset = true
     window.Gui = gui
+    window.OverlayManager = OverlayManager.new(gui.Parent, window.Resources)
     table.insert(localizationState.Windows, window)
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
@@ -3403,7 +3772,7 @@ function SynergyUI:CreateWindow(options)
             subtitleLabel.Size = UDim2.new(0, math.min(subtitleWidth, remaining), 1, 0)
         end
     end
-    titleGroup:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateTitleLayout)
+    window.Resources:AddConnection(titleGroup:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateTitleLayout))
     task.defer(updateTitleLayout)
     window.TitleGroup = titleGroup
     window.TitleLabel = titleLabel
@@ -3430,7 +3799,7 @@ function SynergyUI:CreateWindow(options)
     minBtn.ZIndex = 10
     addCorner(minBtn, 999)
     addStroke(minBtn, window.Theme.StrokeColor, 1, 0.6)
-    addHoverEffect(minBtn, minBtn.BackgroundColor3, window.Theme.HoverColor, false)
+    addHoverEffect(minBtn, minBtn.BackgroundColor3, window.Theme.HoverColor, false, window.Resources)
     local closeBtn = Instance.new("TextButton")
     closeBtn.Name = "CloseButton"
     closeBtn.Parent = controlContainer
@@ -3446,14 +3815,14 @@ function SynergyUI:CreateWindow(options)
     addCorner(closeBtn, 999)
     local closeBtnStroke = addStroke(closeBtn, window.Theme.StrokeColor, 1, 0.6)
     local closeDangerColor = Color3.fromRGB(232, 68, 68)
-    closeBtn.MouseEnter:Connect(function()
+    window.Resources:AddConnection(closeBtn.MouseEnter:Connect(function()
         createTween(closeBtn, 0.18, {BackgroundColor3 = closeDangerColor, BackgroundTransparency = 0.1, TextColor3 = Color3.fromRGB(255,255,255)})
         createTween(closeBtnStroke, 0.18, {Color = closeDangerColor, Transparency = 0.2})
-    end)
-    closeBtn.MouseLeave:Connect(function()
+    end))
+    window.Resources:AddConnection(closeBtn.MouseLeave:Connect(function()
         createTween(closeBtn, 0.18, {BackgroundColor3 = window.Theme.ElementDark, BackgroundTransparency = 0.35, TextColor3 = window.Theme.TextMuted})
         createTween(closeBtnStroke, 0.18, {Color = window.Theme.StrokeColor, Transparency = 0.6})
-    end)
+    end))
     local sidebar = Instance.new("ScrollingFrame")
     sidebar.Name = "Sidebar"
     sidebar.Parent = mainFrame
@@ -3503,7 +3872,10 @@ function SynergyUI:CreateWindow(options)
     addCorner(contentArea, window.Theme.CornerRadius)
     contentArea.ClipsDescendants = true
     local function addConnection(conn)
-        table.insert(window.Connections, conn)
+        if conn then
+            table.insert(window.Connections, conn)
+            window.Resources:AddConnection(conn)
+        end
         return conn
     end
     local resizeHandle = Instance.new("Frame")
@@ -3590,12 +3962,10 @@ function SynergyUI:CreateWindow(options)
     end))
     addConnection(closeBtn.MouseButton1Click:Connect(function()
         window:Destroy()
-        if window.OnClose then pcall(window.OnClose) end
     end))
     addConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if not gameProcessed and not _anyKeybindBinding and window.ToggleKey and input.KeyCode == window.ToggleKey then
-            window.IsVisible = not window.IsVisible
-            gui.Enabled = window.IsVisible
+            window:Toggle()
         end
         if not gameProcessed and input.KeyCode == Enum.KeyCode.Escape and options.CloseOnEscape then
             window:Destroy()
@@ -3617,12 +3987,52 @@ function SynergyUI:CreateWindow(options)
                 window.ToggleKey = keyEnum
             end
         end
+        return window
+    end
+    local function fireLifecycle(eventName, ...)
+        for _, callback in ipairs(window.Lifecycle[eventName] or {}) do
+            pcall(callback, window, ...)
+        end
+    end
+    function window:OnOpen(callback)
+        if type(callback) == "function" then table.insert(window.Lifecycle.Open, callback) end
+        return window
+    end
+    function window:OnClose(callback)
+        if type(callback) == "function" then table.insert(window.Lifecycle.Close, callback) end
+        return window
+    end
+    function window:OnDestroy(callback)
+        if type(callback) == "function" then table.insert(window.Lifecycle.Destroy, callback) end
+        return window
+    end
+    function window:IsOpen()
+        return window.IsVisible and not window.Destroyed
+    end
+    function window:Open()
+        if window.Destroyed then return window end
+        if window.IsVisible then return window end
+        window.IsVisible = true
+        gui.Enabled = true
+        if window.OnOpenCallback then pcall(window.OnOpenCallback, window) end
+        fireLifecycle("Open")
+        return window
+    end
+    function window:Close()
+        if window.Destroyed or not window.IsVisible then return window end
+        if window.OverlayManager then window.OverlayManager:CloseAll() end
+        window.IsVisible = false
+        gui.Enabled = false
+        if window.OnCloseCallback then pcall(window.OnCloseCallback, window) end
+        fireLifecycle("Close")
+        return window
+    end
+    function window:Toggle()
+        if window:IsOpen() then return window:Close() end
+        return window:Open()
     end
     local iconMap = {}
     if options.IconSet ~= false then
-        -- The icon sources live in this repository. Since dist/main.lua runs as a
-        -- standalone Roblox script, it loads the repository directory through its
-        -- raw GitHub URLs instead of relying on a local filesystem path.
         local iconCommit = "03461a61928eb42028daeffe56268e3fff294fba"
         local baseUrl = "https://raw.githubusercontent.com/Xyraniz/SynergyUI/" .. iconCommit .. "/src/Icons/"
         local fetch = request or (syn and syn.request) or (http and http.request) or http_request
@@ -3708,6 +4118,7 @@ function SynergyUI:CreateWindow(options)
         end
     end
     function window:RefreshTheme()
+        self.Theme = ThemeEngine:Normalize(self.Theme)
         local newTheme = self.Theme
         self.MainFrame.BackgroundColor3 = newTheme.Background
         self.MainFrame.BackgroundTransparency = newTheme.BackgroundTransparency
@@ -3785,14 +4196,14 @@ function SynergyUI:CreateWindow(options)
                 elseif control.type == "toggle" then
                     control.frame.BackgroundColor3 = newTheme.Element
                     control.frame.BackgroundTransparency = newTheme.ElementTransparency
-                    control.label.TextColor3 = control.stateVar and newTheme.Accent or newTheme.Text
+                    control.label.TextColor3 = (control.getState and control.getState() or false) and newTheme.Accent or newTheme.Text
                     control.outer.BackgroundColor3 = newTheme.ElementDark
                     control.outer.BackgroundTransparency = newTheme.ElementDarkTransparency
-                    control.inner.BackgroundColor3 = control.stateVar and newTheme.Accent or newTheme.TextMuted
+                    control.inner.BackgroundColor3 = (control.getState and control.getState() or false) and newTheme.Accent or newTheme.TextMuted
                 elseif control.type == "checkbox" then
                     control.frame.BackgroundColor3 = newTheme.Element
                     control.frame.BackgroundTransparency = newTheme.ElementTransparency
-                    control.label.TextColor3 = control.stateVar and newTheme.Accent or newTheme.Text
+                    control.label.TextColor3 = (control.getState and control.getState() or false) and newTheme.Accent or newTheme.Text
                     control.checkFrame.BackgroundColor3 = newTheme.ElementDark
                     control.checkFrame.BackgroundTransparency = newTheme.ElementDarkTransparency
                     control.checkIcon.ImageColor3 = newTheme.Accent
@@ -4010,7 +4421,10 @@ function SynergyUI:CreateWindow(options)
         return SynergyUI:Prompt(options)
     end
     function window:SetAccent(color)
+        window.Theme = ThemeEngine:Normalize(window.Theme)
         window.Theme.Accent = color
+        window.Theme.Colors.Accent = color
+        window.Theme.Colors.Primary = color
         mainFrame:FindFirstChild("UIStroke").Color = color
         titleLabel.TextColor3 = color
         resizeHandle.BackgroundColor3 = color
@@ -4026,32 +4440,42 @@ function SynergyUI:CreateWindow(options)
         end
         window:RefreshTheme()
     end
-    function window:SetTheme(themeName)
-        if Themes[themeName] then
-            local newTheme = Themes[themeName]
-            for k, v in pairs(newTheme) do
-                window.Theme[k] = v
-            end
-            window:RefreshTheme()
-            configHandler:Set("__theme", themeName)
+    function window:SetTheme(themeValue)
+        local selected
+        local selectedName
+        if type(themeValue) == "string" and Themes[themeValue] then
+            selected = ThemeEngine:Clone(Themes[themeValue])
+            selectedName = themeValue
+        elseif type(themeValue) == "table" then
+            selected = ThemeEngine:Clone(themeValue)
+            selectedName = selected.Name
         end
+        if selected then
+            window.Theme = selected
+            window:RefreshTheme()
+            if selectedName then configHandler:Set("__theme", selectedName) end
+        end
+        return window
     end
     function window:Destroy()
+        if window.Destroyed then return window end
+        if window.IsVisible then window:Close() end
+        window.Destroyed = true
         for index = #window.Dialogs, 1, -1 do
             local dialog = window.Dialogs[index]
-            if dialog and dialog.Destroy then
-                dialog:Destroy()
-            end
+            if dialog and dialog.Destroy then dialog:Destroy() end
         end
+        if window.OverlayManager then window.OverlayManager:CloseAll() end
+        if window.OnDestroyCallback then pcall(window.OnDestroyCallback, window) end
+        fireLifecycle("Destroy")
+        window.Resources:Cleanup()
         for index = #localizationState.Windows, 1, -1 do
             if localizationState.Windows[index] == window then
                 table.remove(localizationState.Windows, index)
             end
         end
-        for _, conn in ipairs(window.Connections) do
-            if conn and conn.Connected then conn:Disconnect() end
-        end
-        gui:Destroy()
+        if gui then gui:Destroy() end
+        return window
     end
     function window:CreateTab(name, icon)
         local iconAsset = icon
@@ -4184,7 +4608,7 @@ function SynergyUI:CreateWindow(options)
             if img then img.ImageColor3 = window.Theme.Accent end
         end))
         local elements = {}
-        local controlFactory = ControlFactory:new(scrollFrame, window.Theme, window.SetAccent, configHandler)
+        local controlFactory = ControlFactory:new(scrollFrame, window.Theme, window.SetAccent, configHandler, window.OverlayManager, window.Resources)
         controlFactory.controls = window.Flags
         controlFactory.connections = window.Connections
         local originalCreateKeybind = controlFactory.createKeybind
@@ -4205,17 +4629,17 @@ function SynergyUI:CreateWindow(options)
         end
         elements.CreateLabel = function(_, text) local lbl = controlFactory:createLabel(text); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return lbl end
         elements.CreateSeparator = function() local sep = controlFactory:createSeparator(); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return sep end
-        elements.CreateButton = function(_, opts) local btn,conn = controlFactory:createButton(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return btn,conn end
-        elements.CreateToggle = function(_, opts) local tog,conn = controlFactory:createToggle(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return tog,conn end
-        elements.CreateCheckBox = function(_, opts) local chk,conn = controlFactory:createCheckBox(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return chk,conn end
-        elements.CreateSlider = function(_, opts) local sld,conn = controlFactory:createSlider(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return sld,conn end
+        elements.CreateButton = function(_, opts) local btn,conn = controlFactory:createButton(opts); controlFactory:track(conn); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return btn,conn end
+        elements.CreateToggle = function(_, opts) local tog,conn = controlFactory:createToggle(opts); controlFactory:track(conn); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return tog,conn end
+        elements.CreateCheckBox = function(_, opts) local chk,conn = controlFactory:createCheckBox(opts); controlFactory:track(conn); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return chk,conn end
+        elements.CreateSlider = function(_, opts) local sld,conn = controlFactory:createSlider(opts); controlFactory:track(conn); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return sld,conn end
         elements.CreateProgressBar = function(_, opts) local bar = controlFactory:createProgressBar(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return bar end
-        elements.CreateDropdown = function(_, opts) local drp,conn = controlFactory:createDropdown(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return drp,conn end
-        elements.CreateChecklist = function(_, opts) local chk,conn = controlFactory:createChecklist(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return chk,conn end
-        elements.CreateTextInput = function(_, opts) local txt,conn = controlFactory:createTextInput(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return txt,conn end
-        elements.CreateNumberInput = function(_, opts) local num,conn = controlFactory:createNumberInput(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return num,conn end
-        elements.CreateKeybind = function(_, opts) local key,conn = controlFactory:createKeybind(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return key,conn end
-        elements.CreateColorPicker = function(_, opts) local col,conn = controlFactory:createColorPicker(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return col,conn end
+        elements.CreateDropdown = function(_, opts) local drp,conn = controlFactory:createDropdown(opts); controlFactory:track(conn); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return drp,conn end
+        elements.CreateChecklist = function(_, opts) local chk,conn = controlFactory:createChecklist(opts); controlFactory:track(conn); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return chk,conn end
+        elements.CreateTextInput = function(_, opts) local txt,conn = controlFactory:createTextInput(opts); controlFactory:track(conn); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return txt,conn end
+        elements.CreateNumberInput = function(_, opts) local num,conn = controlFactory:createNumberInput(opts); controlFactory:track(conn); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return num,conn end
+        elements.CreateKeybind = function(_, opts) local key,conn = controlFactory:createKeybind(opts); controlFactory:track(conn); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return key,conn end
+        elements.CreateColorPicker = function(_, opts) local col,conn = controlFactory:createColorPicker(opts); controlFactory:track(conn); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return col,conn end
         elements.CreateRadioGroup = function(_, opts) local rad,conn = controlFactory:createRadioGroup(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return rad,conn end
         elements.CreateParagraph = function(_, opts) local para = controlFactory:createParagraph(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return para end
         elements.CreateImage = function(_, opts) local img = controlFactory:createImage(opts); table.insert(tabData.Controls, controlFactory.createdControls[#controlFactory.createdControls]); return img end
