@@ -2,6 +2,7 @@
 
 SynergyUI es una biblioteca de interfaces para Roblox escrita en Lua. Proporciona ventanas arrastrables y redimensionables, tabs, controles con flags, persistencia en JSON, temas, localización, notificaciones, diálogos y resolución de iconos.
 
+
 ## Documentation
 
 La documentación completa está en [`web/`](web/index.html). También puede servirse localmente como sitio estático:
