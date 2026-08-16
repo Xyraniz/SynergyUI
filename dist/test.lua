@@ -200,20 +200,6 @@ local function addStroke(frame, color, thickness, transparency)
     stroke.Thickness = thickness or 1
     stroke.Transparency = transparency or 0.85
     stroke.Parent = frame
-
-    -- Acabado de superficie inspirado en las tarjetas de WindUI: una lÃ­nea
-    -- superior muy sutil que conserva el contraste en temas claros y oscuros.
-    local sheen = Instance.new("Frame")
-    sheen.Name = "__SynergySheen"
-    sheen.Parent = frame
-    sheen.BackgroundColor3 = Color3.new(1, 1, 1)
-    sheen.BackgroundTransparency = math.clamp((transparency or 0.85) + 0.08, 0, 1)
-    sheen.BorderSizePixel = 0
-    sheen.Position = UDim2.new(0, 1, 0, 1)
-    sheen.Size = UDim2.new(1, -2, 0, 1)
-    sheen.ZIndex = (frame.ZIndex or 1) + 1
-    addCorner(sheen, 999)
-
     return stroke
 end
 local function createTween(instance, duration, properties, style, direction)
@@ -446,52 +432,21 @@ local function addHoverEffect(button, originalColor, hoverColor, useScale, conne
     local scale = nil
     if useScale then
         scale = Instance.new("UIScale")
-        scale.Name = "__SynergyHoverScale"
         scale.Scale = 1
         scale.Parent = button
     end
     local enterConnection = button.MouseEnter:Connect(function()
         createTween(button, 0.18, {BackgroundColor3 = hoverColor})
-        if scale then createTween(scale, 0.18, {Scale = 1.035}) end
+        if scale then createTween(scale, 0.18, {Scale = 1.04}) end
     end)
     local leaveConnection = button.MouseLeave:Connect(function()
         createTween(button, 0.18, {BackgroundColor3 = originalColor})
         if scale then createTween(scale, 0.18, {Scale = 1}) end
     end)
-    local downConnection = button.MouseButton1Down:Connect(function()
-        if scale then createTween(scale, 0.1, {Scale = 0.965}) end
-    end)
-    local upConnection = button.MouseButton1Up:Connect(function()
-        if scale then createTween(scale, 0.14, {Scale = 1.035}) end
-    end)
     if connectionBag then
         connectionBag:AddConnection(enterConnection)
         connectionBag:AddConnection(leaveConnection)
-        connectionBag:AddConnection(downConnection)
-        connectionBag:AddConnection(upConnection)
     end
-end
-
-local function addPressEffect(button, connectionBag)
-    local scale = Instance.new("UIScale")
-    scale.Name = "__SynergyPressScale"
-    scale.Scale = 1
-    scale.Parent = button
-    local downConnection = button.MouseButton1Down:Connect(function()
-        createTween(scale, 0.1, {Scale = 0.94})
-    end)
-    local upConnection = button.MouseButton1Up:Connect(function()
-        createTween(scale, 0.14, {Scale = 1})
-    end)
-    local leaveConnection = button.MouseLeave:Connect(function()
-        createTween(scale, 0.14, {Scale = 1})
-    end)
-    if connectionBag then
-        connectionBag:AddConnection(downConnection)
-        connectionBag:AddConnection(upConnection)
-        connectionBag:AddConnection(leaveConnection)
-    end
-    return scale
 end
 local function createChevron(parent, color)
     local holder = Instance.new("Frame")
@@ -649,26 +604,12 @@ local function showNextNotification()
     label.TextSize = 14.5
     label.TextWrapped = true
     label.TextXAlignment = Enum.TextXAlignment.Left
-
-    -- Barra de duraciÃ³n al estilo de las notificaciones modernas de WindUI.
-    local durationBar = Instance.new("Frame")
-    durationBar.Name = "DurationBar"
-    durationBar.Parent = frame
-    durationBar.BackgroundColor3 = typeColor
-    durationBar.BackgroundTransparency = 0.08
-    durationBar.BorderSizePixel = 0
-    durationBar.Position = UDim2.new(0, 12, 1, -4)
-    durationBar.Size = UDim2.new(1, -24, 0, 2)
-    durationBar.ZIndex = 3
-    addCorner(durationBar, 999)
-
     local targetPos
     if pos == "TopRight" then targetPos = UDim2.new(1, -15, 0, 25)
     elseif pos == "TopLeft" then targetPos = UDim2.new(0, 15, 0, 25)
     elseif pos == "BottomRight" then targetPos = UDim2.new(1, -15, 1, -93)
     else targetPos = UDim2.new(0, 15, 1, -93) end
     createTween(frame, 0.45, {Position = targetPos})
-    createTween(durationBar, n.Duration or 4.2, {Size = UDim2.new(0, 0, 0, 2)}, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
     task.spawn(function()
         task.wait(n.Duration or 4.2)
         local exitPos
@@ -1275,30 +1216,22 @@ function ControlFactory:createProgressBar(options)
 end
 
 function ControlFactory:createButton(options)
-    options = options or {}
-    local variant = tostring(options.Variant or "Secondary")
-    local isPrimary = variant == "Primary"
-    local isGhost = variant == "Ghost"
-    local frameColor = isPrimary and self.theme.Accent or (isGhost and self.theme.Background or self.theme.Element)
-    local hoverColor = isPrimary and ((self.theme.Colors and self.theme.Colors.AccentHover) or self.theme.Accent:lerp(Color3.new(1, 1, 1), 0.12)) or self.theme.HoverColor
-    local textColor = isPrimary and Color3.new(1, 1, 1) or self.theme.Text
     local frame = Instance.new("Frame")
     frame.Parent = self.parent
-    frame.BackgroundColor3 = frameColor
-    frame.BackgroundTransparency = isPrimary and 0.08 or (isGhost and 0.7 or self.theme.ElementTransparency)
+    frame.BackgroundColor3 = self.theme.Element
+    frame.BackgroundTransparency = self.theme.ElementTransparency
     frame.Size = UDim2.new(1, 0, 0, self.theme.ButtonHeight)
     addCorner(frame, self.theme.CornerRadius)
     addStroke(frame, self.theme.StrokeColor, 1, self.theme.StrokeTransparency)
     local btn = Instance.new("TextButton")
     btn.Parent = frame
-    btn.BackgroundColor3 = frameColor
-    btn.BackgroundTransparency = isPrimary and 0.02 or 0.9
+    btn.BackgroundTransparency = 1
     btn.Size = UDim2.new(1, 0, 1, 0)
     btn.Font = self.theme.Font
     bindLocalizedText(btn, "Text", options.Name)
-    btn.TextColor3 = textColor
+    btn.TextColor3 = self.theme.Text
     btn.TextSize = self.theme.TextSizeNormal
-    addHoverEffect(btn, frameColor, hoverColor, true, self.connectionBag)
+    addHoverEffect(btn, self.theme.Element, self.theme.HoverColor, true, self.connectionBag)
     local connection = btn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             local x = input.Position.X - btn.AbsolutePosition.X
@@ -1339,7 +1272,7 @@ function ControlFactory:createButton(options)
         self:track(show)
         self:track(hide)
     end
-    table.insert(self.createdControls, {type = "button", frame = frame, btn = btn, tooltip = options.Tooltip, variant = variant})
+    table.insert(self.createdControls, {type = "button", frame = frame, btn = btn, tooltip = options.Tooltip})
     return frame, connection
 end
 function ControlFactory:createToggle(options)
@@ -1696,7 +1629,7 @@ function ControlFactory:createDropdown(options)
     addStroke(frame, self.theme.StrokeColor, 1, self.theme.StrokeTransparency)
     local btn = Instance.new("TextButton")
     btn.Parent = frame
-    btn.BackgroundTransparency = 0.96
+    btn.BackgroundTransparency = 1
     btn.Size = UDim2.new(1, 0, 0, self.theme.DropdownHeight)
     btn.Font = self.theme.Font
     btn.Text = ""
@@ -1766,8 +1699,7 @@ function ControlFactory:createDropdown(options)
                 optFrame.BorderSizePixel = 0
                 local optBtn = Instance.new("TextButton")
                 optBtn.Parent = optFrame
-                optBtn.BackgroundColor3 = self.theme.ElementDark
-                optBtn.BackgroundTransparency = 0.94
+                optBtn.BackgroundTransparency = 1
                 optBtn.Size = UDim2.new(1, 0, 1, 0)
                 optBtn.Font = self.theme.Font
                 optBtn.Text = "   " .. opt
@@ -2871,56 +2803,59 @@ function ControlFactory:createVideo(options)
     return frame
 end
 local Themes = {
-    Rise = {
-        Accent = Color3.fromRGB(0, 170, 255),
-        Background = Color3.fromRGB(8, 8, 8),
-        Sidebar = Color3.fromRGB(12, 12, 12),
-        Element = Color3.fromRGB(18, 18, 18),
-        ElementDark = Color3.fromRGB(13, 13, 13),
-        Text = Color3.fromRGB(240,240,240),
-        TextMuted = Color3.fromRGB(160,160,160),
-        StrokeColor = Color3.fromRGB(35,35,35),
-        HoverColor = Color3.fromRGB(26,26,26),
-        Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
-        PaddingHorizontal = 14,
-        PaddingVertical = 8,
-        TextSizeNormal = 14,
-        TextSizeSmall = 13,
-        LabelHeight = 38,
-        ButtonHeight = 42,
-        ToggleHeight = 34,
-        ToggleWidth = 50,
-        SliderHeight = 52,
-        SliderBarHeight = 8,
-        DropdownHeight = 42,
-        DropdownItemHeight = 32,
-        ChecklistHeight = 42,
-        ChecklistItemHeight = 32,
-        TextInputHeight = 76,
-        TextInputFieldHeight = 34,
-        KeybindHeight = 42,
-        KeybindWidth = 72,
-        ColorPickerHeight = 42,
-        ColorPickerPreviewSize = 26,
-        ColorPickerExpandedHeight = 200,
-        RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
-    },
     Dark = {
-        Accent = Color3.fromRGB(100, 100, 255),
-        Background = Color3.fromRGB(18, 18, 22),
-        Sidebar = Color3.fromRGB(22, 22, 28),
-        Element = Color3.fromRGB(28, 28, 34),
-        ElementDark = Color3.fromRGB(20, 20, 24),
-        Text = Color3.fromRGB(245,245,245),
-        TextMuted = Color3.fromRGB(170,170,180),
-        StrokeColor = Color3.fromRGB(45,45,55),
-        HoverColor = Color3.fromRGB(38,38,46),
+
+        Accent = Color3.fromRGB(88, 166, 255),
+        Background = Color3.fromRGB(11, 14, 19),
+        Sidebar = Color3.fromRGB(16, 20, 27),
+        Element = Color3.fromRGB(22, 28, 37),
+        ElementDark = Color3.fromRGB(14, 18, 24),
+        Text = Color3.fromRGB(239, 243, 249),
+        TextMuted = Color3.fromRGB(153, 165, 183),
+        StrokeColor = Color3.fromRGB(53, 66, 86),
+        HoverColor = Color3.fromRGB(31, 40, 52),
+        Font = Enum.Font.GothamMedium,
+        CornerRadius = 14,
+        PaddingHorizontal = 14,
+        PaddingVertical = 8,
+        TextSizeNormal = 14,
+        TextSizeSmall = 13,
+        LabelHeight = 38,
+        ButtonHeight = 42,
+        ToggleHeight = 34,
+        ToggleWidth = 50,
+        SliderHeight = 52,
+        SliderBarHeight = 8,
+        DropdownHeight = 42,
+        DropdownItemHeight = 32,
+        ChecklistHeight = 42,
+        ChecklistItemHeight = 32,
+        TextInputHeight = 76,
+        TextInputFieldHeight = 34,
+        KeybindHeight = 42,
+        KeybindWidth = 72,
+        ColorPickerHeight = 42,
+        ColorPickerPreviewSize = 26,
+        ColorPickerExpandedHeight = 200,
+        RadioItemHeight = 34,
+        ElementTransparency = 0.24,
+        ElementDarkTransparency = 0.36,
+        SidebarTransparency = 0.18,
+        BackgroundTransparency = 0.12,
+                StrokeTransparency = 0.68,
+
+    },
+    Slate = {
+
+        Accent = Color3.fromRGB(124, 157, 186),
+        Background = Color3.fromRGB(23, 28, 35),
+        Sidebar = Color3.fromRGB(30, 37, 46),
+        Element = Color3.fromRGB(39, 47, 58),
+        ElementDark = Color3.fromRGB(27, 33, 42),
+        Text = Color3.fromRGB(235, 240, 244),
+        TextMuted = Color3.fromRGB(165, 177, 188),
+        StrokeColor = Color3.fromRGB(74, 89, 105),
+        HoverColor = Color3.fromRGB(52, 64, 77),
         Font = Enum.Font.GothamMedium,
         CornerRadius = 12,
         PaddingHorizontal = 14,
@@ -2945,24 +2880,26 @@ local Themes = {
         ColorPickerPreviewSize = 26,
         ColorPickerExpandedHeight = 200,
         RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
+        ElementTransparency = 0.2,
+        ElementDarkTransparency = 0.34,
+        SidebarTransparency = 0.16,
+        BackgroundTransparency = 0.1,
+                StrokeTransparency = 0.66,
+
     },
-    Cyberpunk = {
-        Accent = Color3.fromRGB(0, 255, 255),
-        Background = Color3.fromRGB(10, 10, 20),
-        Sidebar = Color3.fromRGB(15, 15, 30),
-        Element = Color3.fromRGB(20, 20, 40),
-        ElementDark = Color3.fromRGB(12, 12, 25),
-        Text = Color3.fromRGB(0, 255, 255),
-        TextMuted = Color3.fromRGB(150, 150, 200),
-        StrokeColor = Color3.fromRGB(255, 0, 255),
-        HoverColor = Color3.fromRGB(30, 30, 60),
+    Ivory = {
+
+        Accent = Color3.fromRGB(171, 112, 66),
+        Background = Color3.fromRGB(244, 241, 235),
+        Sidebar = Color3.fromRGB(235, 231, 222),
+        Element = Color3.fromRGB(250, 247, 240),
+        ElementDark = Color3.fromRGB(226, 221, 210),
+        Text = Color3.fromRGB(48, 48, 46),
+        TextMuted = Color3.fromRGB(112, 107, 99),
+        StrokeColor = Color3.fromRGB(196, 186, 171),
+        HoverColor = Color3.fromRGB(239, 232, 219),
         Font = Enum.Font.GothamMedium,
-        CornerRadius = 8,
+        CornerRadius = 14,
         PaddingHorizontal = 14,
         PaddingVertical = 8,
         TextSizeNormal = 14,
@@ -2985,24 +2922,26 @@ local Themes = {
         ColorPickerPreviewSize = 26,
         ColorPickerExpandedHeight = 200,
         RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
+        ElementTransparency = 0.08,
+        ElementDarkTransparency = 0.2,
+        SidebarTransparency = 0.07,
+        BackgroundTransparency = 0.05,
+                StrokeTransparency = 0.48,
+
     },
-    TokyoNight = {
-        Accent = Color3.fromRGB(122, 162, 247),
-        Background = Color3.fromRGB(26, 27, 38),
-        Sidebar = Color3.fromRGB(31, 32, 45),
-        Element = Color3.fromRGB(36, 37, 50),
-        ElementDark = Color3.fromRGB(22, 23, 33),
-        Text = Color3.fromRGB(169, 177, 214),
-        TextMuted = Color3.fromRGB(133, 148, 186),
-        StrokeColor = Color3.fromRGB(86, 95, 137),
-        HoverColor = Color3.fromRGB(53, 55, 77),
+    Sage = {
+
+        Accent = Color3.fromRGB(91, 145, 111),
+        Background = Color3.fromRGB(20, 29, 25),
+        Sidebar = Color3.fromRGB(26, 38, 32),
+        Element = Color3.fromRGB(34, 49, 41),
+        ElementDark = Color3.fromRGB(16, 26, 21),
+        Text = Color3.fromRGB(231, 242, 234),
+        TextMuted = Color3.fromRGB(157, 183, 165),
+        StrokeColor = Color3.fromRGB(65, 93, 75),
+        HoverColor = Color3.fromRGB(43, 64, 52),
         Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
+        CornerRadius = 14,
         PaddingHorizontal = 14,
         PaddingVertical = 8,
         TextSizeNormal = 14,
@@ -3025,24 +2964,26 @@ local Themes = {
         ColorPickerPreviewSize = 26,
         ColorPickerExpandedHeight = 200,
         RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
+        ElementTransparency = 0.22,
+        ElementDarkTransparency = 0.36,
+        SidebarTransparency = 0.18,
+        BackgroundTransparency = 0.12,
+                StrokeTransparency = 0.67,
+
     },
-    Red = {
-        Accent = Color3.fromRGB(255, 60, 80),
-        Background = Color3.fromRGB(20, 15, 15),
-        Sidebar = Color3.fromRGB(25, 18, 18),
-        Element = Color3.fromRGB(35, 25, 25),
-        ElementDark = Color3.fromRGB(25, 18, 18),
-        Text = Color3.fromRGB(255, 240, 240),
-        TextMuted = Color3.fromRGB(200, 180, 180),
-        StrokeColor = Color3.fromRGB(100, 40, 50),
-        HoverColor = Color3.fromRGB(45, 30, 30),
+    Burgundy = {
+
+        Accent = Color3.fromRGB(213, 114, 125),
+        Background = Color3.fromRGB(35, 19, 24),
+        Sidebar = Color3.fromRGB(47, 25, 31),
+        Element = Color3.fromRGB(61, 32, 40),
+        ElementDark = Color3.fromRGB(29, 15, 20),
+        Text = Color3.fromRGB(249, 235, 237),
+        TextMuted = Color3.fromRGB(202, 159, 167),
+        StrokeColor = Color3.fromRGB(119, 61, 72),
+        HoverColor = Color3.fromRGB(78, 42, 51),
         Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
+        CornerRadius = 14,
         PaddingHorizontal = 14,
         PaddingVertical = 8,
         TextSizeNormal = 14,
@@ -3065,62 +3006,24 @@ local Themes = {
         ColorPickerPreviewSize = 26,
         ColorPickerExpandedHeight = 200,
         RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
+        ElementTransparency = 0.24,
+        ElementDarkTransparency = 0.38,
+        SidebarTransparency = 0.18,
+        BackgroundTransparency = 0.12,
+                StrokeTransparency = 0.68,
+
     },
-    BloodRed = {
-        Accent = Color3.fromRGB(255, 0, 0),
-        Background = Color3.fromRGB(15, 8, 8),
-        Sidebar = Color3.fromRGB(20, 12, 12),
-        Element = Color3.fromRGB(30, 18, 18),
-        ElementDark = Color3.fromRGB(15, 10, 10),
-        Text = Color3.fromRGB(255, 80, 80),
-        TextMuted = Color3.fromRGB(220, 180, 180),
-        StrokeColor = Color3.fromRGB(120, 30, 30),
-        HoverColor = Color3.fromRGB(50, 20, 20),
-        Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
-        PaddingHorizontal = 14,
-        PaddingVertical = 8,
-        TextSizeNormal = 14,
-        TextSizeSmall = 13,
-        LabelHeight = 38,
-        ButtonHeight = 42,
-        ToggleHeight = 34,
-        ToggleWidth = 50,
-        SliderHeight = 52,
-        SliderBarHeight = 8,
-        DropdownHeight = 42,
-        DropdownItemHeight = 32,
-        ChecklistHeight = 42,
-        ChecklistItemHeight = 32,
-        TextInputHeight = 76,
-        TextInputFieldHeight = 34,
-        KeybindHeight = 42,
-        KeybindWidth = 72,
-        ColorPickerHeight = 42,
-        ColorPickerPreviewSize = 26,
-        ColorPickerExpandedHeight = 200,
-        RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
-    },
-    White = {
-        Accent = Color3.fromRGB(0, 122, 255),
-        Background = Color3.fromRGB(255, 255, 255),
-        Sidebar = Color3.fromRGB(245, 245, 250),
-        Element = Color3.fromRGB(250, 250, 255),
-        ElementDark = Color3.fromRGB(240, 240, 245),
-        Text = Color3.fromRGB(50, 50, 60),
-        TextMuted = Color3.fromRGB(100, 100, 110),
-        StrokeColor = Color3.fromRGB(200, 200, 210),
-        HoverColor = Color3.fromRGB(230, 235, 240),
+    Sandstone = {
+
+        Accent = Color3.fromRGB(197, 143, 82),
+        Background = Color3.fromRGB(38, 31, 23),
+        Sidebar = Color3.fromRGB(49, 40, 29),
+        Element = Color3.fromRGB(62, 50, 36),
+        ElementDark = Color3.fromRGB(29, 23, 17),
+        Text = Color3.fromRGB(246, 237, 221),
+        TextMuted = Color3.fromRGB(196, 174, 143),
+        StrokeColor = Color3.fromRGB(122, 91, 54),
+        HoverColor = Color3.fromRGB(78, 63, 44),
         Font = Enum.Font.GothamMedium,
         CornerRadius = 12,
         PaddingHorizontal = 14,
@@ -3145,264 +3048,26 @@ local Themes = {
         ColorPickerPreviewSize = 26,
         ColorPickerExpandedHeight = 200,
         RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
-    },
-    Ubuntu = {
-        Accent = Color3.fromRGB(233, 84, 32),
-        Background = Color3.fromRGB(48, 10, 36),
-        Sidebar = Color3.fromRGB(56, 14, 42),
-        Element = Color3.fromRGB(64, 18, 48),
-        ElementDark = Color3.fromRGB(40, 10, 30),
-        Text = Color3.fromRGB(255, 255, 255),
-        TextMuted = Color3.fromRGB(200, 180, 190),
-        StrokeColor = Color3.fromRGB(172, 45, 130),
-        HoverColor = Color3.fromRGB(70, 25, 50),
-        Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
-        PaddingHorizontal = 14,
-        PaddingVertical = 8,
-        TextSizeNormal = 14,
-        TextSizeSmall = 13,
-        LabelHeight = 38,
-        ButtonHeight = 42,
-        ToggleHeight = 34,
-        ToggleWidth = 50,
-        SliderHeight = 52,
-        SliderBarHeight = 8,
-        DropdownHeight = 42,
-        DropdownItemHeight = 32,
-        ChecklistHeight = 42,
-        ChecklistItemHeight = 32,
-        TextInputHeight = 76,
-        TextInputFieldHeight = 34,
-        KeybindHeight = 42,
-        KeybindWidth = 72,
-        ColorPickerHeight = 42,
-        ColorPickerPreviewSize = 26,
-        ColorPickerExpandedHeight = 200,
-        RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
-    },
-    Glacier = {
-        Accent = Color3.fromRGB(0, 191, 255),
-        Background = Color3.fromRGB(240, 248, 255),
-        Sidebar = Color3.fromRGB(230, 245, 255),
-        Element = Color3.fromRGB(245, 252, 255),
-        ElementDark = Color3.fromRGB(225, 245, 255),
-        Text = Color3.fromRGB(25, 55, 75),
-        TextMuted = Color3.fromRGB(70, 110, 130),
-        StrokeColor = Color3.fromRGB(176, 196, 222),
-        HoverColor = Color3.fromRGB(210, 230, 245),
-        Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
-        PaddingHorizontal = 14,
-        PaddingVertical = 8,
-        TextSizeNormal = 14,
-        TextSizeSmall = 13,
-        LabelHeight = 38,
-        ButtonHeight = 42,
-        ToggleHeight = 34,
-        ToggleWidth = 50,
-        SliderHeight = 52,
-        SliderBarHeight = 8,
-        DropdownHeight = 42,
-        DropdownItemHeight = 32,
-        ChecklistHeight = 42,
-        ChecklistItemHeight = 32,
-        TextInputHeight = 76,
-        TextInputFieldHeight = 34,
-        KeybindHeight = 42,
-        KeybindWidth = 72,
-        ColorPickerHeight = 42,
-        ColorPickerPreviewSize = 26,
-        ColorPickerExpandedHeight = 200,
-        RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
-    },
-    Midnight = {
-        Accent = Color3.fromRGB(147, 112, 219),
-        Background = Color3.fromRGB(10, 10, 25),
-        Sidebar = Color3.fromRGB(15, 15, 35),
-        Element = Color3.fromRGB(20, 20, 45),
-        ElementDark = Color3.fromRGB(10, 10, 25),
-        Text = Color3.fromRGB(180, 200, 255),
-        TextMuted = Color3.fromRGB(150, 150, 190),
-        StrokeColor = Color3.fromRGB(75, 0, 130),
-        HoverColor = Color3.fromRGB(35, 35, 60),
-        Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
-        PaddingHorizontal = 14,
-        PaddingVertical = 8,
-        TextSizeNormal = 14,
-        TextSizeSmall = 13,
-        LabelHeight = 38,
-        ButtonHeight = 42,
-        ToggleHeight = 34,
-        ToggleWidth = 50,
-        SliderHeight = 52,
-        SliderBarHeight = 8,
-        DropdownHeight = 42,
-        DropdownItemHeight = 32,
-        ChecklistHeight = 42,
-        ChecklistItemHeight = 32,
-        TextInputHeight = 76,
-        TextInputFieldHeight = 34,
-        KeybindHeight = 42,
-        KeybindWidth = 72,
-        ColorPickerHeight = 42,
-        ColorPickerPreviewSize = 26,
-        ColorPickerExpandedHeight = 200,
-        RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
-    },
-    Anime = {
-        Accent = Color3.fromRGB(255, 105, 180),
-        Background = Color3.fromRGB(255, 240, 245),
-        Sidebar = Color3.fromRGB(255, 228, 235),
-        Element = Color3.fromRGB(255, 245, 250),
-        ElementDark = Color3.fromRGB(255, 235, 245),
-        Text = Color3.fromRGB(139, 69, 101),
-        TextMuted = Color3.fromRGB(180, 130, 150),
-        StrokeColor = Color3.fromRGB(255, 182, 193),
-        HoverColor = Color3.fromRGB(255, 230, 240),
-        Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
-        PaddingHorizontal = 14,
-        PaddingVertical = 8,
-        TextSizeNormal = 14,
-        TextSizeSmall = 13,
-        LabelHeight = 38,
-        ButtonHeight = 42,
-        ToggleHeight = 34,
-        ToggleWidth = 50,
-        SliderHeight = 52,
-        SliderBarHeight = 8,
-        DropdownHeight = 42,
-        DropdownItemHeight = 32,
-        ChecklistHeight = 42,
-        ChecklistItemHeight = 32,
-        TextInputHeight = 76,
-        TextInputFieldHeight = 34,
-        KeybindHeight = 42,
-        KeybindWidth = 72,
-        ColorPickerHeight = 42,
-        ColorPickerPreviewSize = 26,
-        ColorPickerExpandedHeight = 200,
-        RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
-    },
-    Femboy = {
-        Accent = Color3.fromRGB(255, 105, 180),
-        Background = Color3.fromRGB(255, 245, 250),
-        Sidebar = Color3.fromRGB(255, 240, 245),
-        Element = Color3.fromRGB(255, 250, 252),
-        ElementDark = Color3.fromRGB(255, 240, 245),
-        Text = Color3.fromRGB(219, 112, 147),
-        TextMuted = Color3.fromRGB(180, 120, 140),
-        StrokeColor = Color3.fromRGB(255, 182, 193),
-        HoverColor = Color3.fromRGB(255, 235, 245),
-        Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
-        PaddingHorizontal = 14,
-        PaddingVertical = 8,
-        TextSizeNormal = 14,
-        TextSizeSmall = 13,
-        LabelHeight = 38,
-        ButtonHeight = 42,
-        ToggleHeight = 34,
-        ToggleWidth = 50,
-        SliderHeight = 52,
-        SliderBarHeight = 8,
-        DropdownHeight = 42,
-        DropdownItemHeight = 32,
-        ChecklistHeight = 42,
-        ChecklistItemHeight = 32,
-        TextInputHeight = 76,
-        TextInputFieldHeight = 34,
-        KeybindHeight = 42,
-        KeybindWidth = 72,
-        ColorPickerHeight = 42,
-        ColorPickerPreviewSize = 26,
-        ColorPickerExpandedHeight = 200,
-        RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
-    },
-    Hanki = {
-        Accent = Color3.fromRGB(255, 140, 0),
-        Background = Color3.fromRGB(25, 50, 80),
-        Sidebar = Color3.fromRGB(30, 60, 95),
-        Element = Color3.fromRGB(35, 65, 100),
-        ElementDark = Color3.fromRGB(20, 40, 65),
-        Text = Color3.fromRGB(255, 180, 80),
-        TextMuted = Color3.fromRGB(255, 160, 60),
-        StrokeColor = Color3.fromRGB(255, 140, 0),
-        HoverColor = Color3.fromRGB(40, 70, 110),
-        Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
-        PaddingHorizontal = 14,
-        PaddingVertical = 8,
-        TextSizeNormal = 14,
-        TextSizeSmall = 13,
-        LabelHeight = 38,
-        ButtonHeight = 42,
-        ToggleHeight = 34,
-        ToggleWidth = 50,
-        SliderHeight = 52,
-        SliderBarHeight = 8,
-        DropdownHeight = 42,
-        DropdownItemHeight = 32,
-        ChecklistHeight = 42,
-        ChecklistItemHeight = 32,
-        TextInputHeight = 76,
-        TextInputFieldHeight = 34,
-        KeybindHeight = 42,
-        KeybindWidth = 72,
-        ColorPickerHeight = 42,
-        ColorPickerPreviewSize = 26,
-        ColorPickerExpandedHeight = 200,
-        RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
+        ElementTransparency = 0.22,
+        ElementDarkTransparency = 0.36,
+        SidebarTransparency = 0.18,
+        BackgroundTransparency = 0.12,
+                StrokeTransparency = 0.67,
+
     },
     Ocean = {
-        Accent = Color3.fromRGB(0, 180, 255),
-        Background = Color3.fromRGB(15, 30, 50),
-        Sidebar = Color3.fromRGB(20, 38, 60),
-        Element = Color3.fromRGB(25, 43, 66),
-        ElementDark = Color3.fromRGB(18, 33, 55),
-        Text = Color3.fromRGB(220, 245, 255),
-        TextMuted = Color3.fromRGB(160, 200, 230),
-        StrokeColor = Color3.fromRGB(0, 140, 200),
-        HoverColor = Color3.fromRGB(30, 50, 70),
+
+        Accent = Color3.fromRGB(83, 177, 190),
+        Background = Color3.fromRGB(12, 28, 36),
+        Sidebar = Color3.fromRGB(17, 39, 49),
+        Element = Color3.fromRGB(24, 52, 63),
+        ElementDark = Color3.fromRGB(9, 23, 30),
+        Text = Color3.fromRGB(225, 243, 246),
+        TextMuted = Color3.fromRGB(145, 190, 198),
+        StrokeColor = Color3.fromRGB(49, 103, 114),
+        HoverColor = Color3.fromRGB(32, 72, 82),
         Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
+        CornerRadius = 14,
         PaddingHorizontal = 14,
         PaddingVertical = 8,
         TextSizeNormal = 14,
@@ -3425,91 +3090,12 @@ local Themes = {
         ColorPickerPreviewSize = 26,
         ColorPickerExpandedHeight = 200,
         RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
-    },
-    Forest = {
-        Accent = Color3.fromRGB(100, 255, 120),
-        Background = Color3.fromRGB(20, 32, 24),
-        Sidebar = Color3.fromRGB(25, 40, 28),
-        Element = Color3.fromRGB(28, 45, 32),
-        ElementDark = Color3.fromRGB(22, 35, 26),
-        Text = Color3.fromRGB(210, 255, 220),
-        TextMuted = Color3.fromRGB(170, 220, 180),
-        StrokeColor = Color3.fromRGB(80, 180, 100),
-        HoverColor = Color3.fromRGB(35, 55, 40),
-        Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
-        PaddingHorizontal = 14,
-        PaddingVertical = 8,
-        TextSizeNormal = 14,
-        TextSizeSmall = 13,
-        LabelHeight = 38,
-        ButtonHeight = 42,
-        ToggleHeight = 34,
-        ToggleWidth = 50,
-        SliderHeight = 52,
-        SliderBarHeight = 8,
-        DropdownHeight = 42,
-        DropdownItemHeight = 32,
-        ChecklistHeight = 42,
-        ChecklistItemHeight = 32,
-        TextInputHeight = 76,
-        TextInputFieldHeight = 34,
-        KeybindHeight = 42,
-        KeybindWidth = 72,
-        ColorPickerHeight = 42,
-        ColorPickerPreviewSize = 26,
-        ColorPickerExpandedHeight = 200,
-        RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
-    },
-    Sunset = {
-        Accent = Color3.fromRGB(255, 130, 90),
-        Background = Color3.fromRGB(30, 20, 30),
-        Sidebar = Color3.fromRGB(40, 28, 38),
-        Element = Color3.fromRGB(45, 32, 43),
-        ElementDark = Color3.fromRGB(35, 24, 33),
-        Text = Color3.fromRGB(255, 220, 200),
-        TextMuted = Color3.fromRGB(230, 180, 190),
-        StrokeColor = Color3.fromRGB(200, 100, 120),
-        HoverColor = Color3.fromRGB(60, 40, 50),
-        Font = Enum.Font.GothamMedium,
-        CornerRadius = 12,
-        PaddingHorizontal = 14,
-        PaddingVertical = 8,
-        TextSizeNormal = 14,
-        TextSizeSmall = 13,
-        LabelHeight = 38,
-        ButtonHeight = 42,
-        ToggleHeight = 34,
-        ToggleWidth = 50,
-        SliderHeight = 52,
-        SliderBarHeight = 8,
-        DropdownHeight = 42,
-        DropdownItemHeight = 32,
-        ChecklistHeight = 42,
-        ChecklistItemHeight = 32,
-        TextInputHeight = 76,
-        TextInputFieldHeight = 34,
-        KeybindHeight = 42,
-        KeybindWidth = 72,
-        ColorPickerHeight = 42,
-        ColorPickerPreviewSize = 26,
-        ColorPickerExpandedHeight = 200,
-        RadioItemHeight = 34,
-        ElementTransparency = 0.35,
-        ElementDarkTransparency = 0.45,
-        SidebarTransparency = 0.28,
-        BackgroundTransparency = 0.22,
-        StrokeTransparency = 0.78,
+        ElementTransparency = 0.22,
+        ElementDarkTransparency = 0.36,
+        SidebarTransparency = 0.18,
+        BackgroundTransparency = 0.12,
+                StrokeTransparency = 0.67,
+
     },
 }
 local ThemeEngine = {}
@@ -3642,7 +3228,7 @@ function SynergyUI:CreateWindow(options)
     end
     local requestedTheme = options.Theme
     if type(requestedTheme) ~= "table" and (type(requestedTheme) ~= "string" or not Themes[requestedTheme]) then
-        requestedTheme = "Rise"
+        requestedTheme = "Dark"
     end
     local selectedTheme = type(requestedTheme) == "table" and ThemeEngine:Clone(requestedTheme) or ThemeEngine:Clone(Themes[requestedTheme])
     local window = {
@@ -3701,23 +3287,6 @@ function SynergyUI:CreateWindow(options)
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     gui.IgnoreGuiInset = true
     window.Gui = gui
-
-    -- Sombra nine-slice y capas suaves inspiradas en la composiciÃ³n de ventana de WindUI.
-    local windowShadow = Instance.new("ImageLabel")
-    windowShadow.Name = "WindowShadow"
-    windowShadow.Parent = gui
-    windowShadow.BackgroundTransparency = 1
-    windowShadow.BorderSizePixel = 0
-    windowShadow.Image = "rbxassetid://8992230677"
-    windowShadow.ImageColor3 = Color3.new(0, 0, 0)
-    windowShadow.ImageTransparency = 0.82
-    windowShadow.ScaleType = Enum.ScaleType.Slice
-    windowShadow.SliceCenter = Rect.new(99, 99, 99, 99)
-    windowShadow.Position = UDim2.new(0.5, -320, 0.5, -230)
-    windowShadow.Size = UDim2.new(0, 640, 0, 460)
-    windowShadow.ZIndex = 0
-    window.Shadow = windowShadow
-
     window.OverlayManager = OverlayManager.new(gui.Parent, window.Resources)
     table.insert(localizationState.Windows, window)
     local mainFrame = Instance.new("Frame")
@@ -3726,7 +3295,6 @@ function SynergyUI:CreateWindow(options)
     mainFrame.BackgroundColor3 = window.Theme.Background
     mainFrame.BackgroundTransparency = window.Theme.BackgroundTransparency
     mainFrame.BorderSizePixel = 0
-    mainFrame.ZIndex = 1
     mainFrame.ClipsDescendants = true
     addCorner(mainFrame, window.Theme.CornerRadius)
     local mainStroke = addStroke(mainFrame, window.Theme.Accent, strokeThickness, 0.4)
@@ -3910,7 +3478,6 @@ function SynergyUI:CreateWindow(options)
         createTween(closeBtn, 0.18, {BackgroundColor3 = window.Theme.ElementDark, BackgroundTransparency = 0.35, TextColor3 = window.Theme.TextMuted})
         createTween(closeBtnStroke, 0.18, {Color = window.Theme.StrokeColor, Transparency = 0.6})
     end))
-    addPressEffect(closeBtn, window.Resources)
     local sidebar = Instance.new("ScrollingFrame")
     sidebar.Name = "Sidebar"
     sidebar.Parent = mainFrame
@@ -3980,8 +3547,6 @@ function SynergyUI:CreateWindow(options)
         local ap = mainFrame.AbsolutePosition
         local as = mainFrame.AbsoluteSize
         resizeHandle.Position = UDim2.new(0, ap.X + as.X + 18, 0, ap.Y + as.Y / 2 - 27)
-        windowShadow.Position = UDim2.fromOffset(ap.X - 40, ap.Y - 40)
-        windowShadow.Size = UDim2.fromOffset(as.X + 80, as.Y + 80)
     end
     addConnection(mainFrame:GetPropertyChangedSignal("AbsolutePosition"):Connect(syncResizeHandle))
     addConnection(mainFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(syncResizeHandle))
@@ -4104,12 +3669,6 @@ function SynergyUI:CreateWindow(options)
         if window.IsVisible then return window end
         window.IsVisible = true
         gui.Enabled = true
-        local targetSize = window.IsMinimized and UDim2.new(0, mainFrame.Size.X.Offset, 0, 42) or window.LastOpenSize or UDim2.new(0, mainFrame.Size.X.Offset, 0, 380)
-        window.LastOpenSize = targetSize
-        mainFrame.Size = UDim2.new(targetSize.X.Scale, targetSize.X.Offset, 0, 0)
-        windowShadow.ImageTransparency = 1
-        createTween(mainFrame, window.Theme.AnimationWindow or 0.35, {Size = targetSize}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-        createTween(windowShadow, window.Theme.AnimationWindow or 0.35, {ImageTransparency = 0.82}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
         if window.OnOpenCallback then pcall(window.OnOpenCallback, window) end
         fireLifecycle("Open")
         return window
@@ -4118,14 +3677,7 @@ function SynergyUI:CreateWindow(options)
         if window.Destroyed or not window.IsVisible then return window end
         if window.OverlayManager then window.OverlayManager:CloseAll() end
         window.IsVisible = false
-        window.LastOpenSize = mainFrame.Size
-        createTween(mainFrame, window.Theme.AnimationWindow or 0.35, {Size = UDim2.new(mainFrame.Size.X.Scale, mainFrame.Size.X.Offset, 0, 0)}, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
-        createTween(windowShadow, window.Theme.AnimationWindow or 0.35, {ImageTransparency = 1}, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
-        task.delay(window.Theme.AnimationWindow or 0.35, function()
-            if not window.IsVisible and not window.Destroyed then
-                gui.Enabled = false
-            end
-        end)
+        gui.Enabled = false
         if window.OnCloseCallback then pcall(window.OnCloseCallback, window) end
         fireLifecycle("Close")
         return window
@@ -4300,14 +3852,11 @@ function SynergyUI:CreateWindow(options)
                 elseif control.type == "separator" then
                     control.instance.BackgroundColor3 = newTheme.StrokeColor
                 elseif control.type == "button" then
-                    local isPrimary = control.variant == "Primary"
-                    local isGhost = control.variant == "Ghost"
-                    control.frame.BackgroundColor3 = isPrimary and newTheme.Accent or (isGhost and newTheme.Background or newTheme.Element)
-                    control.frame.BackgroundTransparency = isPrimary and 0.08 or (isGhost and 0.7 or newTheme.ElementTransparency)
-                    control.btn.BackgroundColor3 = control.frame.BackgroundColor3
+                    control.frame.BackgroundColor3 = newTheme.Element
+                    control.frame.BackgroundTransparency = newTheme.ElementTransparency
                     local strokeBtn = control.frame:FindFirstChild("UIStroke")
                     if strokeBtn then strokeBtn.Color = newTheme.StrokeColor end
-                    control.btn.TextColor3 = isPrimary and Color3.new(1, 1, 1) or newTheme.Text
+                    control.btn.TextColor3 = newTheme.Text
                 elseif control.type == "toggle" then
                     control.frame.BackgroundColor3 = newTheme.Element
                     control.frame.BackgroundTransparency = newTheme.ElementTransparency
@@ -4592,19 +4141,6 @@ function SynergyUI:CreateWindow(options)
         if gui then gui:Destroy() end
         return window
     end
-
-    if options.AnimateOnCreate ~= false then
-        task.defer(function()
-            if window.Destroyed or not window.IsVisible then return end
-            local finalSize = mainFrame.Size
-            window.LastOpenSize = finalSize
-            mainFrame.Size = UDim2.new(finalSize.X.Scale, finalSize.X.Offset, 0, 0)
-            windowShadow.ImageTransparency = 1
-            createTween(mainFrame, window.Theme.AnimationWindow or 0.35, {Size = finalSize}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-            createTween(windowShadow, window.Theme.AnimationWindow or 0.35, {ImageTransparency = 0.82}, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-        end)
-    end
-
     function window:CreateTab(name, icon)
         local iconAsset = icon
         if type(icon) == "string" and not icon:match("^rbxasset") and not icon:match("^http") then
@@ -4620,8 +4156,8 @@ function SynergyUI:CreateWindow(options)
         tabBtn.Position = UDim2.new(0, window.Theme.PaddingHorizontal + 10, 0, 0)
         tabBtn.ZIndex = 1
 
-        -- Las pestaÃ±as usan una superficie interior redondeada y un borde de baja
-        -- opacidad, en lugar de un rectÃ¡ngulo plano de ancho completo.
+        -- Superficie interior redondeada para tabs, inspirada en la jerarquÃ­a
+        -- de capas de WindUI, pero implementada con primitives nativas.
         local tabSurface = Instance.new("Frame")
         tabSurface.Name = "TabSurface"
         tabSurface.Parent = tabBtn
