@@ -25,7 +25,7 @@
     <a class="nav-link" data-page="icons" href="icons.html"><span>Icon catalog</span><span class="nav-kicker">06</span></a>
     <a class="nav-link" data-page="localization" href="localization.html"><span>Localization</span><span class="nav-kicker">07</span></a>
     <a class="nav-link" data-page="reference" href="reference.html"><span>Runtime notes</span><span class="nav-kicker">08</span></a>
-    <div class="sidebar-footer">Repository reference<span><code>dist/main.lua</code><br>plus six icon catalogs<br>at repository HEAD.</span></div>
+    <div class="sidebar-footer">Repository reference<span><code>dist/main.lua</code><br>plus six icon catalogs<br>from a pinned source commit.</span></div>
   </aside>
   <main class="main" id="main-content">
     <header class="topbar">
@@ -45,7 +45,7 @@
           <div class="card-chrome"><span class="chrome-dot"></span>main.lua · first render</div>
           <pre><span class="code-key">local</span> Window = SynergyUI:<span class="code-call">CreateWindow</span>({
   Title = <span class="code-string">"Synergy Hub"</span>,
-  Theme = <span class="code-string">"Rise"</span>,
+  Theme = <span class="code-string">"Dark"</span>,
   ToggleKey = Enum.KeyCode.RightShift,
 })
 
@@ -63,7 +63,7 @@ elements:<span class="code-call">CreateToggle</span>({
       <section class="kpi-strip" aria-label="Resumen del sistema">
         <div class="kpi"><strong>18,146</strong><span>icon entries</span></div>
         <div class="kpi"><strong>18</strong><span>public builders + aliases</span></div>
-        <div class="kpi"><strong>16</strong><span>built-in themes</span></div>
+        <div class="kpi"><strong>7</strong><span>built-in themes</span></div>
         <div class="kpi"><strong>0 deps</strong><span>HTML docs runtime</span></div>
       </section>
 
@@ -91,7 +91,7 @@ elements:<span class="code-call">CreateToggle</span>({
           <article class="card"><h3>UI surface</h3><p>Window, tabs, drag, resize, minimize, overlay manager, notifications, game notifications, Alert, Confirm y Prompt.</p><div class="meta">api.html</div></article>
           <article class="card"><h3>Controls</h3><p>Label, Section, Separator, Button, Toggle, CheckBox, Slider, ProgressBar, Dropdown, Checklist, inputs, Keybind, ColorPicker, RadioGroup, Paragraph, Image y Video.</p><div class="meta">components.html</div></article>
           <article class="card"><h3>State & persistence</h3><p>Flags, callbacks protegidos con <code>pcall</code>, JSON local en <code>SynergyUI/Settings/&lt;config&gt;.json</code> y restauración al crear.</p><div class="meta">reference.html</div></article>
-          <article class="card"><h3>Theme & language</h3><p>16 temas incorporados, esquema semántico y legacy, registro de temas propios, fallback de idioma y textos con prefijo <code>@</code>.</p><div class="meta">themes.html · localization.html</div></article>
+          <article class="card"><h3>Theme & language</h3><p>7 temas incorporados, esquema semántico y legacy, registro de temas propios, fallback de idioma y textos con prefijo <code>@</code>.</p><div class="meta">themes.html · localization.html</div></article>
         </div>
       </section>
 
@@ -100,7 +100,7 @@ elements:<span class="code-call">CreateToggle</span>({
         <div class="step-list">
           <div class="step"><div><h3>Use a task path</h3><p>Si quieres levantar una UI, ve a Quickstart. Si necesitas decidir qué control usar, ve a Components. Si depuras estado, ve a Runtime notes.</p></div></div>
           <div class="step"><div><h3>Read signatures before prose</h3><p>Cada referencia muestra primero la firma exacta que el código expone, luego una explicación y una tabla de opciones. Esto reduce la ambigüedad al consultar una opción o comparar implementaciones.</p></div></div>
-          <div class="step"><div><h3>Trust the generated index</h3><p>El catálogo de iconos se genera directamente desde <code>src/Icons/*/Icons.lua</code>; no es una lista inventada ni una muestra incompleta.</p></div></div>
+          <div class="step"><div><h3>Trust the generated index</h3><p>El catálogo publicado se genera desde <code>src/Icons/*/Icons.lua</code>, mientras el runtime carga los sets desde un commit fijado; no es una lista inventada ni una muestra incompleta.</p></div></div>
           <div class="step"><div><h3>Keep source links close</h3><p>Los enlaces de cada sección apuntan al archivo o al contrato correspondiente, para que una corrección futura pueda contrastarse con la implementación.</p></div></div>
         </div>
       </section>

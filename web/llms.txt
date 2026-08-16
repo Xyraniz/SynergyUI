@@ -1,6 +1,6 @@
 # SynergyUI — AI-readable API reference
 
-SynergyUI is a Roblox Lua UI library. The public object graph is `SynergyUI → Window → elements`. The implementation source is [`dist/main.lua`](../dist/main.lua) and the machine-readable index is [`api.json`](api.json).
+SynergyUI is a Roblox Lua UI library. The public object graph is `SynergyUI → Window → elements`. The implementation source is [`dist/main.lua`](https://github.com/Xyraniz/SynergyUI/blob/main/dist/main.lua) and the machine-readable index is [`web/api.json`](https://github.com/Xyraniz/SynergyUI/blob/main/web/api.json).
 
 ## Official loader
 
@@ -71,7 +71,7 @@ local Window = SynergyUI:CreateWindow(options) -> Window
 | --- | --- | --- | --- |
 | `Title` | string | `"Synergy Hub"` | Accepts `@Key` localization references. |
 | `Subtitle` | string? | `nil` | Optional localized subtitle. |
-| `Theme` | string/table | `"Rise"` | Registered theme name or custom theme table. |
+| `Theme` | string/table | `"Dark"` | Registered theme name or custom theme table. |
 | `AccentColor` | Color3? | `nil` | Overrides the theme accent. |
 | `Background` / `BackgroundAsset` | number/string? | `nil` | Numeric ID, decimal string, or `rbxassetid://...`. |
 | `BackgroundImageTransparency` | number | `0.52` | Clamped to `0..1`. |
@@ -277,8 +277,8 @@ When filesystem helpers exist, configuration is stored at `SynergyUI/Settings/<C
 
 ## Themes and icons
 
-Built-in themes are `Rise`, `Dark`, `Cyberpunk`, `TokyoNight`, `Red`, `BloodRed`, `White`, `Ubuntu`, `Glacier`, `Midnight`, `Anime`, `Femboy`, `Hanki`, `Ocean`, `Forest`, and `Sunset`. The icon sets are `lucide`, `gravity`, `craft`, `geist`, `sfsymbols`, and `solar`. Icon loading is optional with `IconSet = false`.
+Built-in themes are `Dark`, `Slate`, `Ivory`, `Sage`, `Burgundy`, `Sandstone`, and `Ocean`. The icon sets are `lucide`, `gravity`, `craft`, `geist`, `sfsymbols`, and `solar`. Icon loading is optional with `IconSet = false`; the runtime fetches the selected sets from a pinned source commit.
 
 ## Source of truth
 
-When this file conflicts with prose elsewhere, verify the current implementation in [`dist/main.lua`](../dist/main.lua) and the structured contracts in [`api.json`](api.json). The public raw loader is [`dist/main.lua` on GitHub](https://raw.githubusercontent.com/Xyraniz/SynergyUI/main/dist/main.lua).
+When this file conflicts with prose elsewhere, verify the current implementation in [`dist/main.lua`](https://github.com/Xyraniz/SynergyUI/blob/main/dist/main.lua) and the structured contracts in [`web/api.json`](https://github.com/Xyraniz/SynergyUI/blob/main/web/api.json). The public raw loader is [`dist/main.lua` on GitHub](https://raw.githubusercontent.com/Xyraniz/SynergyUI/main/dist/main.lua).

@@ -17,7 +17,7 @@
     {"path":"llms.txt","topic":"ai-readable-reference"}
   ],
   "globalMethods": {
-    "CreateWindow": {"signature":"SynergyUI:CreateWindow(options: table) -> Window","args":"options: table","returns":"Window","defaults":{"Title":"Synergy Hub","Theme":"Rise","ToggleKey":"Enum.KeyCode.RightShift","ConfigName":"default_config","size":"560x380"}},
+    "CreateWindow": {"signature":"SynergyUI:CreateWindow(options: table) -> Window","args":"options: table","returns":"Window","defaults":{"Title":"Synergy Hub","Theme":"Dark","ToggleKey":"Enum.KeyCode.RightShift","ConfigName":"default_config","size":"560x380"}},
     "Notify": {"signature":"SynergyUI:Notify(options: table|string) -> nil","args":"options: table|string","returns":"nil","options":["Message","Type","Duration","Position","TypeColor","Parent","Callback"]},
     "CreateGameNotification": {"signature":"SynergyUI:CreateGameNotification(options: table) -> nil","args":"options: table","returns":"nil","options":["Parent","Image","Title","MiniTitle","Description","YesText","NoText","YesCallback","NoCallback"]},
     "Alert": {"signature":"SynergyUI:Alert(options: table|string) -> Dialog","args":"options: table|string","returns":"Dialog","options":["Title","Content","Description","AccentColor","BackgroundColor","Parent","OwnerWindow","CloseOnOverlay","CloseOnEscape","OkText","ConfirmText","Callback"]},
@@ -37,7 +37,7 @@
   "windowOptions": {
     "Title":"string?; default Synergy Hub",
     "Subtitle":"string?; default nil",
-    "Theme":"string|table?; default Rise",
+    "Theme":"string|table?; default Dark",
     "AccentColor":"Color3?; default nil",
     "Background|BackgroundAsset":"number|string?; default nil",
     "BackgroundImageTransparency":"number?; default 0.52, clamped 0..1",
@@ -95,7 +95,7 @@
     "CreateImage":{"signature":"Elements:CreateImage(options) -> Frame","options":["Title","Image","Description"],"returns":"Frame","defaults":{"Title":"@Image","Image":"","Description":""}},
     "CreateVideo":{"signature":"Elements:CreateVideo(options) -> Frame","options":["Title","Video","Looped","Volume"],"returns":"Frame","defaults":{"Title":"@Video","Video":"","Looped":false,"Volume":1}}
   },
-  "themes": ["Rise","Dark","Cyberpunk","TokyoNight","Red","BloodRed","White","Ubuntu","Glacier","Midnight","Anime","Femboy","Hanki","Ocean","Forest","Sunset"],
+  "themes": ["Dark","Slate","Ivory","Sage","Burgundy","Sandstone","Ocean"],
   "iconSets": {"craft":1008,"geist":328,"gravity":781,"lucide":1715,"sfsymbols":6984,"solar":7330},
   "persistence": {
     "path":"SynergyUI/Settings/<ConfigName>.json",
