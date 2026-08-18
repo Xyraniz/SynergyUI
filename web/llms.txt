@@ -10,7 +10,7 @@ The distributed implementation is a Lua chunk that returns the `SynergyUI` table
 local SynergyUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Xyraniz/SynergyUI/main/dist/main.lua"))()
 ```
 
-The loader requires an environment that permits the HTTP request and Lua execution. The URL tracks the repository `main` branch.
+The loader requires an environment that permits the HTTP request and Lua execution. The URL tracks the repository `main` branch. The runtime source was checked against `dist/main.lua`; icon loading is pinned internally to commit `03461a61928eb42028daeffe56268e3fff294fba` at `src/Icons/<set>/Icons.lua`.
 
 ## Global API
 
@@ -81,7 +81,7 @@ local Window = SynergyUI:CreateWindow(options) -> Window
 | `ConfigName` | string | `"default_config"` | JSON name under `SynergyUI/Settings`. |
 | `Localization` | table? | `nil` | Initial `FallbackLanguage`, `Language`, and `Translations`. |
 | `Language` | string? | `nil` | Initial global language. |
-| `IconSet` | false/string/array? | all built-in sets | `false` disables loading; string or array selects sets. |
+| `IconSet` | false/string/array? | all built-in sets | `false` disables loading; a string selects one set and an array selects several sets in the provided order. |
 | `CloseOnEscape` | boolean? | false | When truthy, Escape destroys the window. |
 | `OnOpen` / `OnClose` / `OnDestroy` | function? | `nil` | One callback per event option; runs on every matching event and complements registered hooks. |
 
@@ -115,7 +115,7 @@ Window:CreateTab(name: string, icon: string|table|nil) -> Elements
 
 `Window:SetLanguage` delegates to `SynergyUI:SetLanguage`, so it updates all active windows and returns `false` for a non-string argument. `Window:RefreshLocalization` re-resolves registered localized properties and recalculates this window's title layout without changing the active language. `Window:SetToggleKey` is a colon-style method, accepts a key name string or `"None"`, returns the window, and leaves the existing key unchanged for an invalid name. `Window:Alert`, `Window:Confirm`, and `Window:Prompt` assign `OwnerWindow` automatically so the dialogs are destroyed with the window.
 
-`Window:SetBackground` removes the current image and returns `false` when the asset is invalid; valid numeric or asset-id strings return `true`. `Window:SetTheme` accepts a registered name or a custom table, normalizes it, refreshes the controls, and persists `__theme` when a registered name is used.
+`Window:SetBackground` removes the current image and returns `false` when the asset is invalid; valid numeric or asset-id strings return `true`. `Window:SetTheme` accepts a registered name or a custom table, normalizes it, refreshes the controls, and persists `__theme` when a registered name is used. `Window:CreateTab(name, icon)` resolves a named icon from the selected sets; `rbxassetid://...` strings, HTTP URLs, and descriptor tables are used directly, while numeric strings are not normalized for tabs.
 
 ## Elements namespace
 
@@ -222,7 +222,7 @@ Elements:CreateDropdown(options) -> DropdownFlag, RBXScriptConnection
 | `Searchable` | boolean? | `false`; adds a search field when true. |
 | `Callback` | function? | Single-select receives `value`; multi-select interaction receives `(option, selected)`. |
 
-Single-select priority is saved valid value, then `CurrentOption`, then the first option or `""`. Multi-select priority is saved array, then `CurrentSelected`, then no selections. The returned flag object and the same object at `Window.Flags[Flag]` expose `GetValue()`, `SetValue(value)`, `AddOption(option)`, `RemoveOption(option)`, `ClearOptions()`, and `Select(value)`. `GetValue` returns a string in single-select mode and an array in multi-select mode; arrays assembled from Lua maps have no guaranteed order.
+Single-select priority is saved valid value, then `CurrentOption`, then the first option or `""`; when a selection exists after construction, the single-select callback runs with that value. Multi-select priority is saved array, then `CurrentSelected`, then no selections. The returned flag object and the same object at `Window.Flags[Flag]` expose `GetValue()`, `SetValue(value)`, `AddOption(option)`, `RemoveOption(option)`, `ClearOptions()`, and `Select(value)`. `GetValue` returns a string in single-select mode and an array in multi-select mode; arrays assembled from Lua maps have no guaranteed order.
 
 ### Checklist
 
@@ -277,7 +277,7 @@ When filesystem helpers exist, configuration is stored at `SynergyUI/Settings/<C
 
 ## Themes and icons
 
-Built-in themes are `Dark`, `Slate`, `Ivory`, `Sage`, `Burgundy`, `Sandstone`, and `Ocean`. The icon sets are `lucide`, `gravity`, `craft`, `geist`, `sfsymbols`, and `solar`. Icon loading is optional with `IconSet = false`; the runtime fetches the selected sets from a pinned source commit.
+Built-in themes are `Dark`, `Slate`, `Ivory`, `Sage`, `Burgundy`, `Sandstone`, and `Ocean`. The icon sets are `lucide`, `gravity`, `craft`, `geist`, `sfsymbols`, and `solar`. Icon loading is optional with `IconSet = false`; the runtime fetches the selected sets from pinned commit `03461a61928eb42028daeffe56268e3fff294fba`, and when duplicate names are merged the first loaded definition wins.
 
 ## Source of truth
 

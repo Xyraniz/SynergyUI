@@ -3,6 +3,8 @@
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
   const body = document.body;
+  body.classList.add('js-ready');
+
   const menuButton = $('[data-menu-toggle]');
   if (menuButton) {
     menuButton.addEventListener('click', () => {
@@ -12,7 +14,17 @@
   }
 
   $$('.nav-link').forEach((link) => {
-    link.addEventListener('click', () => body.classList.remove('nav-open'));
+    link.addEventListener('click', () => {
+      body.classList.remove('nav-open');
+      menuButton?.setAttribute('aria-expanded', 'false');
+    });
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      body.classList.remove('nav-open');
+      menuButton?.setAttribute('aria-expanded', 'false');
+    }
   });
 
   const currentPage = document.body.dataset.page;
@@ -70,7 +82,7 @@
     const matches = searchIndex.filter((item) => `${item.title} ${item.text}`.toLowerCase().includes(query)).slice(0, 8);
     searchResults.innerHTML = matches.length
       ? matches.map((item) => `<a class="search-result" href="${item.href}"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.text)}</span></a>`).join('')
-      : '<div class="search-result"><strong>Sin coincidencias</strong><span>Prueba con “slider”, “icons”, “theme” o “flag”.</span></div>';
+      : '<div class="search-result"><strong>Sin coincidencias</strong><span>Prueba con «slider», «icons», «theme» o «flag».</span></div>';
     searchResults.classList.add('open');
   };
   if (searchInput) {
@@ -86,12 +98,37 @@
   }
   document.addEventListener('click', (event) => {
     if (searchResults && !event.target.closest('.search-wrap')) searchResults.classList.remove('open');
+    if (body.classList.contains('nav-open') && !event.target.closest('.sidebar, [data-menu-toggle]')) {
+      body.classList.remove('nav-open');
+      menuButton?.setAttribute('aria-expanded', 'false');
+    }
   });
   document.addEventListener('keydown', (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();
       searchInput?.focus();
     }
+  });
+
+  const revealItems = $$('.section, .kpi-strip, .footer');
+  if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    revealItems.forEach((item) => item.classList.add('reveal'));
+    const revealObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('is-visible');
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -6% 0px' });
+    revealItems.forEach((item) => revealObserver.observe(item));
+  }
+
+  $$('.card, .kpi, .step, .api-card, .icon-item').forEach((card) => {
+    card.addEventListener('pointermove', (event) => {
+      const rect = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${event.clientX - rect.left}px`);
+      card.style.setProperty('--my', `${event.clientY - rect.top}px`);
+    });
   });
 
   const iconGrid = $('[data-icon-grid]');
@@ -102,16 +139,6 @@
     const iconDataUrl = iconGrid.dataset.icons || 'icons.json';
     let catalog = null;
     let renderTimer;
-    fetch(iconDataUrl)
-      .then((response) => response.json())
-      .then((data) => {
-        catalog = data;
-        iconSet.innerHTML = '<option value="all">Todos los sets</option>' + Object.keys(data.sets).map((set) => `<option value="${set}">${set} · ${data.sets[set].length.toLocaleString('es-ES')}</option>`).join('');
-        renderIcons();
-      })
-      .catch(() => {
-        iconGrid.innerHTML = '<div class="icon-empty">No se pudo cargar <code>icons.json</code>. Vuelve a abrir la documentación pública o revisa la conexión.</div>';
-      });
     const renderIcons = () => {
       if (!catalog) return;
       const query = (iconSearch?.value || '').trim().toLowerCase();
@@ -130,6 +157,16 @@
         if (glyph) { glyph.textContent = '✓'; setTimeout(() => { glyph.textContent = '✦'; }, 850); }
       }));
     };
+    fetch(iconDataUrl)
+      .then((response) => response.json())
+      .then((data) => {
+        catalog = data;
+        iconSet.innerHTML = '<option value="all">Todos los sets</option>' + Object.keys(data.sets).map((set) => `<option value="${set}">${set} · ${data.sets[set].length.toLocaleString('es-ES')}</option>`).join('');
+        renderIcons();
+      })
+      .catch(() => {
+        iconGrid.innerHTML = '<div class="icon-empty">No se pudo cargar <code>icons.json</code>. Revisa la conexión o vuelve a abrir la documentación pública.</div>';
+      });
     const scheduleRender = () => { clearTimeout(renderTimer); renderTimer = setTimeout(renderIcons, 90); };
     iconSearch?.addEventListener('input', scheduleRender);
     iconSet?.addEventListener('change', renderIcons);
