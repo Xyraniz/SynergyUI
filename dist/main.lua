@@ -6,7 +6,6 @@ local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
 local TextService = game:GetService("TextService")
-local Mouse = Players.LocalPlayer and Players.LocalPlayer:GetMouse() or nil
 local _anyKeybindBinding = false
 local localizationState = {
     Language = "en",
@@ -800,7 +799,7 @@ local function createDialog(options)
     card.BorderSizePixel = 0
     card.ZIndex = 201
     addCorner(card, 16)
-    local cardStroke = addStroke(card, options.AccentColor or Color3.fromRGB(0, 170, 255), 1, 0.35)
+    addStroke(card, options.AccentColor or Color3.fromRGB(0, 170, 255), 1, 0.35)
     local accent = Instance.new("Frame")
     accent.Parent = card
     accent.BackgroundColor3 = options.AccentColor or Color3.fromRGB(0, 170, 255)
@@ -1127,7 +1126,7 @@ function ControlFactory:createProgressBar(options)
     frame.Size = UDim2.new(1, 0, 0, height)
     frame.BorderSizePixel = 0
     addCorner(frame, self.theme.CornerRadius)
-    local frameStroke = addStroke(frame, self.theme.StrokeColor, 1, self.theme.StrokeTransparency)
+    addStroke(frame, self.theme.StrokeColor, 1, self.theme.StrokeTransparency)
     local label = Instance.new("TextLabel")
     label.Parent = frame
     label.BackgroundTransparency = 1
@@ -2146,21 +2145,6 @@ function ControlFactory:createNumberInput(options)
     self.controls[flag] = flagObj
     table.insert(self.createdControls, {type = "numberinput", frame = frame, label = label, input = input})
     return flagObj, connection
-end
-local function stringToKeyCode(str)
-    if not str or str == "None" then return nil end
-    local success, result = pcall(function()
-        return Enum.KeyCode[str]
-    end)
-    if success and result then
-        return result
-    end
-    for _, v in pairs(Enum.KeyCode:GetEnumItems()) do
-        if v.Name:lower() == str:lower() then
-            return v
-        end
-    end
-    return nil
 end
 function ControlFactory:createKeybind(options)
     local flag = options.Flag or options.Name
