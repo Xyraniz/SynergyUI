@@ -313,9 +313,15 @@ end
 function OverlayHandle:Open()
     if self.Destroyed then return self end
     self.Manager:CloseOthers(self)
+    if self._closeTween then self._closeTween:Cancel() self._closeTween = nil end
+    if self._openTween then self._openTween:Cancel() self._openTween = nil end
     self:UpdatePosition()
+    local targetSize = self.Frame.Size
+    local startHeight = math.min(self.MinHeight, targetSize.Y.Offset)
+    self.Frame.Size = UDim2.new(targetSize.X.Scale, targetSize.X.Offset, 0, startHeight)
     self.Opened = true
     self.Frame.Visible = true
+    self._openTween = createTween(self.Frame, 0.16, {Size = targetSize})
     if self.OnOpen then pcall(self.OnOpen, self) end
     return self
 end
@@ -323,7 +329,23 @@ function OverlayHandle:Close()
     if self.Destroyed then return self end
     local wasOpen = self.Opened
     self.Opened = false
-    self.Frame.Visible = false
+    if wasOpen then
+        if self._openTween then self._openTween:Cancel() self._openTween = nil end
+        if self._closeTween then self._closeTween:Cancel() self._closeTween = nil end
+        local currentSize = self.Frame.Size
+        local endHeight = math.min(self.MinHeight, currentSize.Y.Offset)
+        local closeTween = createTween(self.Frame, 0.14, {Size = UDim2.new(currentSize.X.Scale, currentSize.X.Offset, 0, endHeight)})
+        self._closeTween = closeTween
+        local connection
+        connection = closeTween.Completed:Connect(function()
+            if connection then connection:Disconnect() end
+            if not self.Opened then
+                pcall(function() self.Frame.Visible = false end)
+            end
+        end)
+    else
+        self.Frame.Visible = false
+    end
     if wasOpen and self.OnClose then pcall(self.OnClose, self) end
     return self
 end
@@ -1806,7 +1828,7 @@ function ControlFactory:createDropdown(options)
                             dropdownOverlay:Close()
                         else
                             createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.DropdownHeight)})
-                            container.Size = UDim2.new(1, 0, 0, 0)
+                            createTween(container, 0.25, {Size = UDim2.new(1, 0, 0, 0)})
                         end
                         createTween(icon, 0.18, {Rotation = 0})
                         pcall(options.Callback, opt)
@@ -1838,13 +1860,20 @@ function ControlFactory:createDropdown(options)
         elseif isOpen then
             local expandedHeight = math.min(contentHeight, 200)
             createTween(frame, 0.18, {Size = UDim2.new(1, 0, 0, self.theme.DropdownHeight + expandedHeight)})
-            container.Size = UDim2.new(1, 0, 0, expandedHeight)
+            createTween(container, 0.18, {Size = UDim2.new(1, 0, 0, expandedHeight)})
         end
     end
     rebuild()
     if searchBox then
+        local searchGeneration = 0
         self:track(searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-            rebuild(searchBox.Text)
+            searchGeneration = searchGeneration + 1
+            local myGeneration = searchGeneration
+            task.defer(function()
+                if myGeneration == searchGeneration and searchBox.Parent then
+                    rebuild(searchBox.Text)
+                end
+            end)
         end))
     end
     if self.overlayManager then
@@ -1881,7 +1910,7 @@ function ControlFactory:createDropdown(options)
             else
                 local expandedHeight = math.min(contentHeight, 200)
                 createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.DropdownHeight + expandedHeight)})
-                container.Size = UDim2.new(1, 0, 0, expandedHeight)
+                createTween(container, 0.25, {Size = UDim2.new(1, 0, 0, expandedHeight)})
             end
             createTween(icon, 0.18, {Rotation = 180})
         else
@@ -1889,7 +1918,7 @@ function ControlFactory:createDropdown(options)
                 dropdownOverlay:Close()
             else
                 createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.DropdownHeight)})
-                container.Size = UDim2.new(1, 0, 0, 0)
+                createTween(container, 0.25, {Size = UDim2.new(1, 0, 0, 0)})
             end
             createTween(icon, 0.18, {Rotation = 0})
         end
@@ -2128,6 +2157,7 @@ function ControlFactory:createChecklist(options)
             optLabel.TextColor3 = self.theme.TextMuted
             optLabel.TextSize = self.theme.TextSizeSmall
             optLabel.TextXAlignment = Enum.TextXAlignment.Left
+            optLabel.TextYAlignment = Enum.TextYAlignment.Center
             optLabel.TextTruncate = Enum.TextTruncate.AtEnd
             local clickBtn = Instance.new("TextButton")
             clickBtn.Parent = row
@@ -2166,7 +2196,7 @@ function ControlFactory:createChecklist(options)
         elseif isOpen then
             local expandedHeight = math.min(contentHeight, 220)
             createTween(frame, 0.18, {Size = UDim2.new(1, 0, 0, self.theme.ChecklistHeight + expandedHeight)})
-            container.Size = UDim2.new(1, 0, 0, expandedHeight)
+            createTween(container, 0.18, {Size = UDim2.new(1, 0, 0, expandedHeight)})
         end
     end
     rebuild()
@@ -2204,7 +2234,7 @@ function ControlFactory:createChecklist(options)
             else
                 local expandedHeight = math.min(contentHeight, 220)
                 createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.ChecklistHeight + expandedHeight)})
-                container.Size = UDim2.new(1, 0, 0, expandedHeight)
+                createTween(container, 0.25, {Size = UDim2.new(1, 0, 0, expandedHeight)})
             end
             createTween(icon, 0.18, {Rotation = 180})
         else
@@ -2212,7 +2242,7 @@ function ControlFactory:createChecklist(options)
                 checklistOverlay:Close()
             else
                 createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.ChecklistHeight)})
-                container.Size = UDim2.new(1, 0, 0, 0)
+                createTween(container, 0.25, {Size = UDim2.new(1, 0, 0, 0)})
             end
             createTween(icon, 0.18, {Rotation = 0})
         end
@@ -2896,15 +2926,21 @@ function ControlFactory:createImage(options)
     btn.BackgroundTransparency = 1
     btn.Size = UDim2.new(1, 0, 1, 0)
     btn.Text = ""
+    local closeConnection
     btn.MouseButton1Click:Connect(function()
         expanded = not expanded
+        if closeConnection then closeConnection:Disconnect() closeConnection = nil end
         if expanded then
-            createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, 44 + container.Size.Y.Offset)})
             container.Visible = true
+            createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, 44 + container.Size.Y.Offset)})
             createTween(arrow, 0.18, {Rotation = 180})
         else
-            createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, 44)})
-            container.Visible = false
+            local tween = createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, 44)})
+            closeConnection = tween.Completed:Connect(function()
+                if not expanded then
+                    pcall(function() container.Visible = false end)
+                end
+            end)
             createTween(arrow, 0.18, {Rotation = 0})
         end
     end)
@@ -2982,15 +3018,21 @@ function ControlFactory:createVideo(options)
     btn.BackgroundTransparency = 1
     btn.Size = UDim2.new(1, 0, 1, 0)
     btn.Text = ""
+    local closeConnection
     btn.MouseButton1Click:Connect(function()
         expanded = not expanded
+        if closeConnection then closeConnection:Disconnect() closeConnection = nil end
         if expanded then
-            createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, 44 + container.Size.Y.Offset)})
             container.Visible = true
+            createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, 44 + container.Size.Y.Offset)})
             createTween(arrow, 0.18, {Rotation = 180})
         else
-            createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, 44)})
-            container.Visible = false
+            local tween = createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, 44)})
+            closeConnection = tween.Completed:Connect(function()
+                if not expanded then
+                    pcall(function() container.Visible = false end)
+                end
+            end)
             createTween(arrow, 0.18, {Rotation = 0})
         end
     end)
