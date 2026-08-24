@@ -108,13 +108,20 @@ end
 
 local function normalizeAssetId(value)
     if type(value) == "number" then
-        return "rbxassetid://" .. tostring(value)
+        if value >= 0 then
+            return "rbxassetid://" .. tostring(math.floor(value))
+        end
     end
     if type(value) == "string" then
+        value = value:match("^%s*(.-)%s*$")
         if value:match("^%d+$") then
             return "rbxassetid://" .. value
         end
-        if value:match("^rbxassetid://%d+$") then
+        if value:match("^rbxassetid://%d+$") or value:match("^rbxthumb://%d+%?.+$") then
+            return value
+        end
+        -- Keep valid web/custom assets usable in controls that accept image URLs.
+        if value:match("^https?://") then
             return value
         end
     end
@@ -662,7 +669,7 @@ function SynergyUI:CreateGameNotification(options)
     logo.BackgroundTransparency = 1
     logo.Size = UDim2.new(0, 53, 0, 48)
     logo.Position = UDim2.new(0, 8, 0, 3)
-    logo.Image = options.Image or "rbxassetid://3926305904"
+    logo.Image = normalizeAssetId(options.Image) or "rbxassetid://3926305904"
     logo.ImageTransparency = 1
     addCorner(logo, 5)
     local titleLabel = Instance.new("TextLabel")
@@ -1306,10 +1313,13 @@ function ControlFactory:createToggle(options)
     outer.Parent = frame
     outer.BackgroundColor3 = self.theme.ElementDark
     outer.BackgroundTransparency = self.theme.ElementDarkTransparency
-    outer.Position = UDim2.new(1, -self.theme.ToggleWidth - self.theme.PaddingHorizontal, 0.5, -self.theme.ToggleHeight/2 + 1)
+    outer.AnchorPoint = Vector2.new(1, 0.5)
+    outer.Position = UDim2.new(1, -self.theme.PaddingHorizontal, 0.5, 0)
     outer.Size = UDim2.new(0, self.theme.ToggleWidth, 0, self.theme.ToggleHeight - 8)
     addCorner(outer, 999)
+    local outerStroke = addStroke(outer, self.theme.StrokeColor, 1, self.theme.StrokeTransparency)
     local inner = Instance.new("Frame")
+    inner.Name = "ToggleInner"
     inner.Parent = outer
     inner.BackgroundColor3 = state and self.theme.Accent or self.theme.TextMuted
     local innerSize = self.theme.ToggleHeight - 16
@@ -1338,7 +1348,7 @@ function ControlFactory:createToggle(options)
     self.controls[flag] = flagObj
     local connection = btn.MouseButton1Click:Connect(function() update(not state) end)
     if state then pcall(options.Callback, state) end
-    table.insert(self.createdControls, {type = "toggle", frame = frame, label = label, outer = outer, inner = inner, btn = btn, getState = function() return state end, update = update})
+    table.insert(self.createdControls, {type = "toggle", frame = frame, label = label, outer = outer, outerStroke = outerStroke, inner = inner, btn = btn, getState = function() return state end, update = update})
     return frame, connection
 end
 function ControlFactory:createCheckBox(options)
@@ -1370,6 +1380,7 @@ function ControlFactory:createCheckBox(options)
     label.TextSize = self.theme.TextSizeNormal
     label.TextXAlignment = Enum.TextXAlignment.Left
     local checkFrame = Instance.new("Frame")
+    checkFrame.Name = "CheckFrame"
     checkFrame.Parent = frame
     checkFrame.BackgroundColor3 = self.theme.ElementDark
     checkFrame.BackgroundTransparency = self.theme.ElementDarkTransparency
@@ -1691,6 +1702,7 @@ function ControlFactory:createDropdown(options)
         for _, opt in ipairs(optionsList) do
             if not filter or string.find(string.lower(opt), string.lower(filter)) then
                 local optFrame = Instance.new("Frame")
+                optFrame.Name = "DropdownOption"
                 optFrame.Parent = container
                 optFrame.BackgroundColor3 = self.theme.ElementDark
                 optFrame.BackgroundTransparency = self.theme.ElementDarkTransparency
@@ -1708,6 +1720,7 @@ function ControlFactory:createDropdown(options)
                 addHoverEffect(optBtn, self.theme.ElementDark, self.theme.HoverColor, false)
                 if multi then
                     local check = Instance.new("Frame")
+                    check.Name = "DropdownCheck"
                     check.Parent = optFrame
                     check.BackgroundColor3 = selected[opt] and self.theme.Accent or self.theme.Element
                     check.Position = UDim2.new(1, -28, 0.5, -10)
@@ -1869,7 +1882,7 @@ function ControlFactory:createDropdown(options)
             end
         end
     end
-    table.insert(self.createdControls, {type = "dropdown", frame = frame, btn = btn, icon = icon, container = container})
+    table.insert(self.createdControls, {type = "dropdown", frame = frame, btn = btn, icon = icon, container = container, rebuild = rebuild, isSelected = function(opt) return multi and selected[opt] == true end})
     return flagObj, connection
 end
 function ControlFactory:createChecklist(options)
@@ -1953,6 +1966,7 @@ function ControlFactory:createChecklist(options)
             row.BorderSizePixel = 0
             row.Size = UDim2.new(1, 0, 0, self.theme.ChecklistItemHeight)
             local toggleOuter = Instance.new("Frame")
+            toggleOuter.Name = "ChecklistOuter"
             toggleOuter.Parent = row
             toggleOuter.BackgroundColor3 = self.theme.Element
             toggleOuter.BackgroundTransparency = self.theme.ElementTransparency
@@ -1961,8 +1975,9 @@ function ControlFactory:createChecklist(options)
             addCorner(toggleOuter, 6)
             addStroke(toggleOuter, self.theme.StrokeColor)
             local toggleInner = Instance.new("Frame")
+            toggleInner.Name = "ToggleInner"
             toggleInner.Parent = toggleOuter
-            toggleInner.BackgroundColor3 = selected[opt] and self.theme.Accent or Color3.fromRGB(60,60,60)
+            toggleInner.BackgroundColor3 = selected[opt] and self.theme.Accent or self.theme.TextMuted
             toggleInner.Position = selected[opt] and UDim2.new(0.5, -6, 0.5, -6) or UDim2.new(0, 3, 0.5, -6)
             toggleInner.Size = UDim2.new(0, 12, 0, 12)
             addCorner(toggleInner, 6)
@@ -1984,7 +1999,7 @@ function ControlFactory:createChecklist(options)
             clickBtn.MouseButton1Click:Connect(function()
                 selected[opt] = not selected[opt]
                 createTween(toggleInner, 0.2, {
-                    BackgroundColor3 = selected[opt] and self.theme.Accent or Color3.fromRGB(60,60,60),
+                    BackgroundColor3 = selected[opt] and self.theme.Accent or self.theme.TextMuted,
                     Position = selected[opt] and UDim2.new(0.5, -6, 0.5, -6) or UDim2.new(0, 3, 0.5, -6)
                 })
                 updateSelectedCount()
@@ -2036,7 +2051,7 @@ function ControlFactory:createChecklist(options)
         end
     }
     self.controls[flag] = flagObj
-    table.insert(self.createdControls, {type = "checklist", frame = frame, btn = btn, countLabel = countLabel, icon = icon, container = container})
+    table.insert(self.createdControls, {type = "checklist", frame = frame, btn = btn, countLabel = countLabel, icon = icon, container = container, rebuild = rebuild, isSelected = function(opt) return selected[opt] == true end})
     return flagObj, connection
 end
 function ControlFactory:createTextInput(options)
@@ -2484,8 +2499,9 @@ function ControlFactory:createRadioGroup(options)
         addCorner(outer, 999)
         addStroke(outer, self.theme.StrokeColor)
         local inner = Instance.new("Frame")
+        inner.Name = "RadioInner"
         inner.Parent = outer
-        inner.BackgroundColor3 = (opt == selected) and self.theme.Accent or Color3.fromRGB(60,60,60)
+        inner.BackgroundColor3 = (opt == selected) and self.theme.Accent or self.theme.TextMuted
         inner.Position = UDim2.new(0.5, -6, 0.5, -6)
         inner.Size = UDim2.new(0, 12, 0, 12)
         addCorner(inner, 999)
@@ -2508,7 +2524,7 @@ function ControlFactory:createRadioGroup(options)
             if opt ~= selected then
                 selected = opt
                 for _, rb in ipairs(radioButtons) do
-                    rb.Inner.BackgroundColor3 = (rb.Option == selected) and self.theme.Accent or Color3.fromRGB(60,60,60)
+                    rb.Inner.BackgroundColor3 = (rb.Option == selected) and self.theme.Accent or self.theme.TextMuted
                 end
                 pcall(options.Callback, selected)
                 if self.configHandler then self.configHandler:Set(flag, selected) end
@@ -2522,7 +2538,7 @@ function ControlFactory:createRadioGroup(options)
             if table.find(options.Options, v) then
                 selected = v
                 for _, rb in ipairs(radioButtons) do
-                    rb.Inner.BackgroundColor3 = (rb.Option == selected) and self.theme.Accent or Color3.fromRGB(60,60,60)
+                    rb.Inner.BackgroundColor3 = (rb.Option == selected) and self.theme.Accent or self.theme.TextMuted
                 end
                 pcall(options.Callback, selected)
                 if self.configHandler then self.configHandler:Set(flag, selected) end
@@ -2566,7 +2582,7 @@ function ControlFactory:createParagraph(options)
         imageLabel.BackgroundColor3 = self.theme.ElementDark
         imageLabel.BackgroundTransparency = self.theme.ElementDarkTransparency
         imageLabel.Size = UDim2.new(1, 0, 0, 120)
-        imageLabel.Image = options.Image
+        imageLabel.Image = normalizeAssetId(options.Image) or options.Image
         imageLabel.ScaleType = Enum.ScaleType.Fit
         addCorner(imageLabel, 8)
         addStroke(imageLabel, self.theme.StrokeColor, 1, 0.5)
@@ -2661,7 +2677,7 @@ function ControlFactory:createImage(options)
     image.BackgroundTransparency = self.theme.ElementTransparency
     image.Size = UDim2.new(1, -20, 0, 120)
     image.Position = UDim2.new(0, 10, 0, 10)
-    image.Image = options.Image or ""
+        image.Image = normalizeAssetId(options.Image) or options.Image or ""
     image.ScaleType = Enum.ScaleType.Fit
     addCorner(image, 8)
     if options.Description and options.Description ~= "" then
@@ -3336,6 +3352,7 @@ function SynergyUI:CreateWindow(options)
     topBarMask.Size = UDim2.new(1, 0, 0, window.Theme.CornerRadius)
     topBarMask.ZIndex = 9
     local topBarSep = Instance.new("Frame")
+    topBarSep.Name = "TopBarSeparator"
     topBarSep.Parent = topBar
     topBarSep.BackgroundColor3 = window.Theme.StrokeColor
     topBarSep.BorderSizePixel = 0
@@ -3585,6 +3602,12 @@ function SynergyUI:CreateWindow(options)
         end
     end))
     addConnection(minBtn.MouseButton1Click:Connect(function()
+        -- When the floating restore button is enabled, minimizing should hide
+        -- the entire window instead of leaving the top bar visible.
+        if window.RestoreButton then
+            window:Close()
+            return
+        end
         window.IsMinimized = not window.IsMinimized
         if window.IsMinimized then
             createTween(mainFrame, 0.35, {Size = UDim2.new(0, mainFrame.Size.X.Offset, 0, 42)})
@@ -3653,6 +3676,7 @@ function SynergyUI:CreateWindow(options)
         if window.IsVisible then return window end
         window.IsVisible = true
         gui.Enabled = true
+        if window.RestoreButton then window.RestoreButton.Visible = false end
         if window.OnOpenCallback then pcall(window.OnOpenCallback, window) end
         fireLifecycle("Open")
         return window
@@ -3662,6 +3686,7 @@ function SynergyUI:CreateWindow(options)
         if window.OverlayManager then window.OverlayManager:CloseAll() end
         window.IsVisible = false
         gui.Enabled = false
+        if window.RestoreButton then window.RestoreButton.Visible = true end
         if window.OnCloseCallback then pcall(window.OnCloseCallback, window) end
         fireLifecycle("Close")
         return window
@@ -3669,6 +3694,80 @@ function SynergyUI:CreateWindow(options)
     function window:Toggle()
         if window:IsOpen() then return window:Close() end
         return window:Open()
+    end
+    -- Optional floating restore button. It lives in its own ScreenGui so it
+    -- remains visible while the main window's ScreenGui is disabled.
+    local buttonOption = options.Button
+    local buttonEnabled = buttonOption == true or buttonOption == "yes" or buttonOption == "Yes" or buttonOption == "YES"
+    local buttonAsset = normalizeAssetId(options.ButtonAsset or options.ButtonImage or options.ButtonId or options.MinimizeButtonAsset)
+    if type(buttonOption) == "number" or type(buttonOption) == "string" then
+        buttonAsset = buttonAsset or normalizeAssetId(buttonOption)
+        buttonEnabled = buttonEnabled or buttonAsset ~= nil
+    end
+    if buttonEnabled then
+        local buttonGui = Instance.new("ScreenGui")
+        buttonGui.Name = "SynergyUI_Restore_" .. HttpService:GenerateGUID(false)
+        buttonGui.Parent = options.Parent or getDefaultParent()
+        buttonGui.ResetOnSpawn = false
+        buttonGui.IgnoreGuiInset = true
+        buttonGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+        buttonGui.DisplayOrder = 1000
+        local restoreButton = buttonAsset and Instance.new("ImageButton") or Instance.new("TextButton")
+        restoreButton.Name = "RestoreButton"
+        restoreButton.Parent = buttonGui
+        restoreButton.AnchorPoint = Vector2.new(0, 1)
+        restoreButton.Position = options.ButtonPosition or UDim2.new(0, 24, 1, -24)
+        local buttonSize = math.clamp(tonumber(options.ButtonSize) or 52, 32, 96)
+        restoreButton.Size = UDim2.fromOffset(buttonSize, buttonSize)
+        restoreButton.Visible = false
+        restoreButton.BackgroundColor3 = window.Theme.ElementDark
+        restoreButton.BackgroundTransparency = window.Theme.ElementDarkTransparency
+        restoreButton.BorderSizePixel = 0
+        restoreButton.AutoButtonColor = false
+        restoreButton.ZIndex = 1001
+        if buttonAsset then
+            restoreButton.Image = buttonAsset
+            restoreButton.ImageColor3 = window.Theme.Accent
+            restoreButton.ScaleType = Enum.ScaleType.Fit
+        else
+            restoreButton.Text = options.ButtonText or "≡"
+            restoreButton.Font = window.Theme.Font
+            restoreButton.TextSize = 22
+            restoreButton.TextColor3 = window.Theme.Accent
+        end
+        addCorner(restoreButton, buttonSize / 3)
+        local restoreStroke = addStroke(restoreButton, window.Theme.StrokeColor, 1, window.Theme.StrokeTransparency)
+        local draggingButton, dragStart, buttonStart
+        restoreButton.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                draggingButton = true
+                dragStart = input.Position
+                buttonStart = restoreButton.Position
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if draggingButton and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                local delta = input.Position - dragStart
+                restoreButton.Position = UDim2.new(buttonStart.X.Scale, buttonStart.X.Offset + delta.X, buttonStart.Y.Scale, buttonStart.Y.Offset + delta.Y)
+            end
+        end)
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                draggingButton = false
+            end
+        end)
+        restoreButton.MouseEnter:Connect(function()
+            createTween(restoreButton, 0.16, {BackgroundColor3 = window.Theme.HoverColor, BackgroundTransparency = 0.05})
+            if restoreStroke then createTween(restoreStroke, 0.16, {Color = window.Theme.Accent, Transparency = 0.15}) end
+        end)
+        restoreButton.MouseLeave:Connect(function()
+            createTween(restoreButton, 0.16, {BackgroundColor3 = window.Theme.ElementDark, BackgroundTransparency = window.Theme.ElementDarkTransparency})
+            if restoreStroke then createTween(restoreStroke, 0.16, {Color = window.Theme.StrokeColor, Transparency = window.Theme.StrokeTransparency}) end
+        end)
+        restoreButton.MouseButton1Click:Connect(function() window:Open() end)
+        window.RestoreButtonGui = buttonGui
+        window.RestoreButton = restoreButton
+        window.RestoreButtonStroke = restoreStroke
     end
     local iconMap = {}
     if options.IconSet ~= false then
@@ -3766,6 +3865,15 @@ function SynergyUI:CreateWindow(options)
         local topBarRef = self.MainFrame:FindFirstChild("TopBar")
         topBarRef.BackgroundColor3 = newTheme.Sidebar
         topBarRef.BackgroundTransparency = newTheme.SidebarTransparency
+        local topBarMaskRef = topBarRef:FindFirstChild("TopBarMask")
+        if topBarMaskRef then
+            topBarMaskRef.BackgroundColor3 = newTheme.Sidebar
+            topBarMaskRef.BackgroundTransparency = newTheme.SidebarTransparency
+        end
+        local topBarSepRef = topBarRef:FindFirstChild("TopBarSeparator")
+        if topBarSepRef then
+            topBarSepRef.BackgroundColor3 = newTheme.StrokeColor
+        end
         titleLabel.TextColor3 = newTheme.Accent
         titleLabel.Font = newTheme.Font
         if subtitleLabel then
@@ -3794,9 +3902,27 @@ function SynergyUI:CreateWindow(options)
         self.MainFrame:FindFirstChild("Sidebar").BackgroundColor3 = newTheme.Sidebar
         self.MainFrame:FindFirstChild("Sidebar").BackgroundTransparency = newTheme.SidebarTransparency
         self.MainFrame:FindFirstChild("Sidebar").ScrollBarImageColor3 = newTheme.Accent
+        local sidebarMaskRef = self.MainFrame:FindFirstChild("SidebarMask")
+        if sidebarMaskRef then
+            sidebarMaskRef.BackgroundColor3 = newTheme.Sidebar
+            sidebarMaskRef.BackgroundTransparency = newTheme.SidebarTransparency
+        end
         self.MainFrame:FindFirstChild("ContentArea").BackgroundColor3 = newTheme.Background
         self.MainFrame:FindFirstChild("ContentArea").BackgroundTransparency = newTheme.BackgroundTransparency
         self.resizeHandle.BackgroundColor3 = newTheme.Accent
+        if self.RestoreButton then
+            self.RestoreButton.BackgroundColor3 = newTheme.ElementDark
+            self.RestoreButton.BackgroundTransparency = newTheme.ElementDarkTransparency
+            if self.RestoreButton:IsA("TextButton") then
+                self.RestoreButton.TextColor3 = newTheme.Accent
+            else
+                self.RestoreButton.ImageColor3 = newTheme.Accent
+            end
+            if self.RestoreButtonStroke then
+                self.RestoreButtonStroke.Color = newTheme.StrokeColor
+                self.RestoreButtonStroke.Transparency = newTheme.StrokeTransparency
+            end
+        end
         for _, tab in ipairs(self.Tabs) do
             tab.Content.BackgroundColor3 = newTheme.Background
             tab.Content.BackgroundTransparency = newTheme.BackgroundTransparency
@@ -3847,6 +3973,10 @@ function SynergyUI:CreateWindow(options)
                     control.label.TextColor3 = (control.getState and control.getState() or false) and newTheme.Accent or newTheme.Text
                     control.outer.BackgroundColor3 = newTheme.ElementDark
                     control.outer.BackgroundTransparency = newTheme.ElementDarkTransparency
+                    if control.outerStroke then
+                        control.outerStroke.Color = newTheme.StrokeColor
+                        control.outerStroke.Transparency = newTheme.StrokeTransparency
+                    end
                     control.inner.BackgroundColor3 = (control.getState and control.getState() or false) and newTheme.Accent or newTheme.TextMuted
                 elseif control.type == "checkbox" then
                     control.frame.BackgroundColor3 = newTheme.Element
@@ -3854,6 +3984,8 @@ function SynergyUI:CreateWindow(options)
                     control.label.TextColor3 = (control.getState and control.getState() or false) and newTheme.Accent or newTheme.Text
                     control.checkFrame.BackgroundColor3 = newTheme.ElementDark
                     control.checkFrame.BackgroundTransparency = newTheme.ElementDarkTransparency
+                    local checkStroke = control.checkFrame:FindFirstChildWhichIsA("UIStroke")
+                    if checkStroke then checkStroke.Color = newTheme.StrokeColor end
                     control.checkIcon.ImageColor3 = newTheme.Accent
                 elseif control.type == "slider" then
                     control.frame.BackgroundColor3 = newTheme.Element
@@ -3904,6 +4036,25 @@ function SynergyUI:CreateWindow(options)
                     control.container.BackgroundColor3 = newTheme.ElementDark
                     control.container.BackgroundTransparency = newTheme.ElementDarkTransparency
                     control.container.ScrollBarImageColor3 = newTheme.Accent
+                    for _, child in ipairs(control.container:GetDescendants()) do
+                        if child:IsA("UIStroke") then
+                            child.Color = newTheme.StrokeColor
+                        elseif child:IsA("TextBox") then
+                            child.BackgroundColor3 = newTheme.Element
+                            child.BackgroundTransparency = newTheme.ElementTransparency
+                            child.TextColor3 = newTheme.Text
+                            child.PlaceholderColor3 = newTheme.TextMuted
+                        elseif child:IsA("TextButton") then
+                            child.TextColor3 = newTheme.TextMuted
+                        elseif child:IsA("Frame") and child.Name == "DropdownOption" then
+                            child.BackgroundColor3 = newTheme.ElementDark
+                            child.BackgroundTransparency = newTheme.ElementDarkTransparency
+                        elseif child:IsA("Frame") and child.Name == "DropdownCheck" then
+                            local optionText = child.Parent:FindFirstChildWhichIsA("TextButton")
+                            local option = optionText and optionText.Text:gsub("^%s+", "")
+                            child.BackgroundColor3 = (option and control.isSelected and control.isSelected(option)) and newTheme.Accent or newTheme.Element
+                        end
+                    end
                 elseif control.type == "checklist" then
                     control.frame.BackgroundColor3 = newTheme.Element
                     control.frame.BackgroundTransparency = newTheme.ElementTransparency
@@ -3913,6 +4064,21 @@ function SynergyUI:CreateWindow(options)
                     control.container.BackgroundColor3 = newTheme.ElementDark
                     control.container.BackgroundTransparency = newTheme.ElementDarkTransparency
                     control.container.ScrollBarImageColor3 = newTheme.Accent
+                    for _, child in ipairs(control.container:GetDescendants()) do
+                        if child:IsA("UIStroke") then
+                            child.Color = newTheme.StrokeColor
+                        elseif child:IsA("TextLabel") then
+                            child.TextColor3 = newTheme.TextMuted
+                        elseif child:IsA("Frame") and child.Name == "ChecklistOuter" then
+                            child.BackgroundColor3 = newTheme.Element
+                            child.BackgroundTransparency = newTheme.ElementTransparency
+                        elseif child:IsA("Frame") and child.Name == "ToggleInner" then
+                            local row = child.Parent and child.Parent.Parent
+                            local optionLabel = row and row:FindFirstChildWhichIsA("TextLabel")
+                            local option = optionLabel and optionLabel.Text
+                            child.BackgroundColor3 = (option and control.isSelected and control.isSelected(option)) and newTheme.Accent or newTheme.TextMuted
+                        end
+                    end
                 elseif control.type == "textinput" then
                     control.frame.BackgroundColor3 = newTheme.Element
                     control.frame.BackgroundTransparency = newTheme.ElementTransparency
@@ -4123,14 +4289,15 @@ function SynergyUI:CreateWindow(options)
             end
         end
         if gui then gui:Destroy() end
+        if window.RestoreButtonGui then window.RestoreButtonGui:Destroy() end
         return window
     end
     function window:CreateTab(name, icon)
         local iconAsset = icon
         if type(icon) == "string" and not icon:match("^rbxasset") and not icon:match("^http") then
-            iconAsset = iconMap[icon] or ""
+            iconAsset = normalizeAssetId(icon) or iconMap[icon] or ""
         end
-        local iconImage = type(iconAsset) == "table" and iconAsset.Image or iconAsset
+        local iconImage = type(iconAsset) == "table" and iconAsset.Image or (normalizeAssetId(iconAsset) or iconAsset)
         local tabBtn = Instance.new("TextButton")
         tabBtn.Parent = sidebar
         tabBtn.BackgroundTransparency = 1
