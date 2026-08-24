@@ -260,6 +260,10 @@ function OverlayHandle:SetContent(content)
         content.Parent = self.Frame
         content.Position = UDim2.new(0, 0, 0, 0)
         content.Size = UDim2.new(1, 0, 1, 0)
+        -- The overlay owns the expanded panel.  Keeping the panel at the
+        -- overlay origin prevents it from inheriting the dropdown's old
+        -- Y-offset when it is reparented out of the control frame.
+        content.AnchorPoint = Vector2.new(0, 0)
         content.Visible = true
     end
     return self
@@ -1640,12 +1644,18 @@ function ControlFactory:createDropdown(options)
     local btn = Instance.new("TextButton")
     btn.Parent = frame
     btn.BackgroundTransparency = 1
-    btn.Size = UDim2.new(1, 0, 0, self.theme.DropdownHeight)
+    -- Leave room for the chevron and keep the label inside the fixed header.
+    -- A full-width button with a left offset was able to push its text out of
+    -- the control when the expanded panel was moved to the overlay layer.
+    btn.Size = UDim2.new(1, -(self.theme.PaddingHorizontal * 2 + 32), 0, self.theme.DropdownHeight)
     btn.Font = self.theme.Font
     btn.Text = ""
     btn.TextColor3 = self.theme.Text
     btn.TextSize = self.theme.TextSizeNormal
     btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.TextYAlignment = Enum.TextYAlignment.Center
+    btn.TextWrapped = false
+    btn.TextTruncate = Enum.TextTruncate.AtEnd
     btn.Position = UDim2.new(0, self.theme.PaddingHorizontal, 0, 0)
     local icon = createChevron(btn, self.theme.TextMuted)
     local container = Instance.new("ScrollingFrame")
@@ -1757,6 +1767,11 @@ function ControlFactory:createDropdown(options)
             end
         end
         container.CanvasSize = UDim2.new(0, 0, 0, #optionButtons * self.theme.DropdownItemHeight + (searchable and 40 or 8))
+        if dropdownOverlay and dropdownOverlay.Opened then
+            -- Search changes the number of visible rows. Reposition and
+            -- resize immediately instead of waiting for another click.
+            dropdownOverlay:UpdatePosition()
+        end
     end
     rebuild()
     if searchable then
@@ -1772,7 +1787,11 @@ function ControlFactory:createDropdown(options)
             Name = "DropdownOverlay",
             Kind = "Dropdown",
             Anchor = btn,
-            Width = 220,
+            WidthProvider = function()
+                return btn.AbsoluteSize.X
+            end,
+            MinWidth = 160,
+            MaxWidth = 520,
             MaxHeight = 200,
             HeightProvider = function()
                 return math.min(#optionButtons * self.theme.DropdownItemHeight + (searchable and 40 or 8), 200)
@@ -1787,11 +1806,11 @@ function ControlFactory:createDropdown(options)
     local connection = btn.MouseButton1Click:Connect(function()
         isOpen = not isOpen
         if isOpen then
-            local expandedHeight = math.min(#optionsList * self.theme.DropdownItemHeight + (searchable and 40 or 8), 200)
-            local targetHeight = self.theme.DropdownHeight + expandedHeight
             if dropdownOverlay then
                 dropdownOverlay:Open()
             else
+                local expandedHeight = math.min(#optionButtons * self.theme.DropdownItemHeight + (searchable and 40 or 8), 200)
+                local targetHeight = self.theme.DropdownHeight + expandedHeight
                 createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, targetHeight)})
                 container.Size = UDim2.new(1, 0, 0, expandedHeight)
             end
@@ -1906,12 +1925,15 @@ function ControlFactory:createChecklist(options)
     local btn = Instance.new("TextButton")
     btn.Parent = frame
     btn.BackgroundTransparency = 1
-    btn.Size = UDim2.new(1, 0, 0, self.theme.ChecklistHeight)
+    btn.Size = UDim2.new(1, -(self.theme.PaddingHorizontal * 2 + 92), 0, self.theme.ChecklistHeight)
     btn.Font = self.theme.Font
     bindLocalizedText(btn, "Text", options.Name)
     btn.TextColor3 = self.theme.Text
     btn.TextSize = self.theme.TextSizeNormal
     btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.TextYAlignment = Enum.TextYAlignment.Center
+    btn.TextWrapped = false
+    btn.TextTruncate = Enum.TextTruncate.AtEnd
     btn.Position = UDim2.new(0, self.theme.PaddingHorizontal, 0, 0)
     local countLabel = Instance.new("TextLabel")
     countLabel.Parent = frame
