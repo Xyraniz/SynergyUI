@@ -15,6 +15,8 @@ local localizationState = {
             Accept = "Accept",
             Cancel = "Cancel",
             Search = "Search...",
+            NoResults = "No results",
+            NoOptions = "No options",
             Select = "Select",
             None = "None",
             Selected = "selected",
@@ -120,12 +122,17 @@ local function normalizeAssetId(value)
         if value:match("^rbxassetid://%d+$") or value:match("^rbxthumb://%d+%?.+$") then
             return value
         end
-        -- Keep valid web/custom assets usable in controls that accept image URLs.
         if value:match("^https?://") then
             return value
         end
     end
     return nil
+end
+
+local function normalizeSearchText(value)
+    value = tostring(value or "")
+    value = value:gsub("%s+", " ")
+    return value:match("^%s*(.-)%s*$") or ""
 end
 
 function SynergyUI:AddTranslations(language, translations)
@@ -260,9 +267,6 @@ function OverlayHandle:SetContent(content)
         content.Parent = self.Frame
         content.Position = UDim2.new(0, 0, 0, 0)
         content.Size = UDim2.new(1, 0, 1, 0)
-        -- The overlay owns the expanded panel.  Keeping the panel at the
-        -- overlay origin prevents it from inheriting the dropdown's old
-        -- Y-offset when it is reparented out of the control frame.
         content.AnchorPoint = Vector2.new(0, 0)
         content.Visible = true
     end
@@ -1644,9 +1648,6 @@ function ControlFactory:createDropdown(options)
     local btn = Instance.new("TextButton")
     btn.Parent = frame
     btn.BackgroundTransparency = 1
-    -- Leave room for the chevron and keep the label inside the fixed header.
-    -- A full-width button with a left offset was able to push its text out of
-    -- the control when the expanded panel was moved to the overlay layer.
     btn.Size = UDim2.new(1, -(self.theme.PaddingHorizontal * 2 + 32), 0, self.theme.DropdownHeight)
     btn.Font = self.theme.Font
     btn.Text = ""
@@ -1659,6 +1660,7 @@ function ControlFactory:createDropdown(options)
     btn.Position = UDim2.new(0, self.theme.PaddingHorizontal, 0, 0)
     local icon = createChevron(btn, self.theme.TextMuted)
     local container = Instance.new("ScrollingFrame")
+    container.Name = "DropdownContent"
     container.Parent = frame
     container.BackgroundColor3 = self.theme.ElementDark
     container.BackgroundTransparency = self.theme.ElementDarkTransparency
@@ -1668,49 +1670,90 @@ function ControlFactory:createDropdown(options)
     container.ScrollBarThickness = 4
     container.ScrollBarImageColor3 = self.theme.Accent
     container.CanvasSize = UDim2.new(0, 0, 0, 0)
+    container.ScrollingDirection = Enum.ScrollingDirection.Y
+    container.Active = true
     addCorner(container, self.theme.CornerRadius)
     addStroke(container, self.theme.StrokeColor, 1, self.theme.StrokeTransparency)
+    local containerPadding = Instance.new("UIPadding")
+    containerPadding.Parent = container
+    containerPadding.PaddingTop = UDim.new(0, 6)
+    containerPadding.PaddingBottom = UDim.new(0, 6)
+    containerPadding.PaddingLeft = UDim.new(0, 6)
+    containerPadding.PaddingRight = UDim.new(0, 6)
+    local searchBox
     if searchable then
-        local searchBox = Instance.new("TextBox")
+        searchBox = Instance.new("TextBox")
+        searchBox.Name = "SearchBox"
         searchBox.Parent = container
         searchBox.BackgroundColor3 = self.theme.Element
         searchBox.BackgroundTransparency = self.theme.ElementTransparency
-        searchBox.Size = UDim2.new(1, -12, 0, 28)
-        searchBox.Position = UDim2.new(0, 6, 0, 4)
+        searchBox.Size = UDim2.new(1, 0, 0, 30)
         searchBox.Font = self.theme.Font
         bindLocalizedText(searchBox, "PlaceholderText", "@Search")
+        searchBox.PlaceholderColor3 = self.theme.TextMuted
         searchBox.Text = ""
         searchBox.TextColor3 = self.theme.Text
         searchBox.TextSize = self.theme.TextSizeSmall
-        addCorner(searchBox, 8)
-        addStroke(searchBox, self.theme.StrokeColor)
+        searchBox.TextXAlignment = Enum.TextXAlignment.Left
         searchBox.ClearTextOnFocus = false
+        searchBox.LayoutOrder = -100000
+        addCorner(searchBox, 8)
+        addStroke(searchBox, self.theme.StrokeColor, 1, self.theme.StrokeTransparency)
+        local searchPadding = Instance.new("UIPadding")
+        searchPadding.Parent = searchBox
+        searchPadding.PaddingLeft = UDim.new(0, 10)
+        searchPadding.PaddingRight = UDim.new(0, 10)
     end
     local layout = Instance.new("UIListLayout")
     layout.Parent = container
     layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.Padding = UDim.new(0, 2)
     local isOpen = false
-    local optionButtons = {}
+    local optionFrames = {}
+    local noResultsLabel
+    local contentHeight = 0
     local flagObj
     local dropdownOverlay
     local function getButtonText()
         if multi then
             local count = 0
-            for _,v in pairs(selected) do if v then count = count + 1 end end
-            return localizedValue(options.Name) .. " : " .. count .. " " .. localizedValue("@Selected")
+            for _, v in pairs(selected) do
+                if v then count = count + 1 end
+            end
+            return tostring(localizedValue(options.Name)) .. " : " .. count .. " " .. tostring(localizedValue("@Selected"))
         end
-        return localizedValue(options.Name) .. " : " .. (selected == "" and localizedValue("@None") or localizedValue(selected))
+        local selectedText = selected == "" and localizedValue("@None") or localizedValue(selected)
+        return tostring(localizedValue(options.Name)) .. " : " .. tostring(selectedText)
     end
     local function updateButtonText()
         btn.Text = getButtonText()
     end
     bindLocalizedResolver(btn, "Text", getButtonText)
+    local function getContentHeight(rowCount)
+        rowCount = math.max(rowCount or 0, 1)
+        local searchHeight = searchable and 30 or 0
+        local childCount = rowCount + (searchable and 1 or 0)
+        local gaps = math.max(childCount - 1, 0) * 2
+        return 12 + searchHeight + rowCount * self.theme.DropdownItemHeight + gaps
+    end
     local function rebuild(filter)
-        for _, b in ipairs(optionButtons) do if b and b.Parent then b:Destroy() end end
-        optionButtons = {}
-        for _, opt in ipairs(optionsList) do
-            if not filter or string.find(string.lower(opt), string.lower(filter)) then
+        for _, optionFrame in ipairs(optionFrames) do
+            if optionFrame and optionFrame.Parent then
+                optionFrame:Destroy()
+            end
+        end
+        if noResultsLabel and noResultsLabel.Parent then
+            noResultsLabel:Destroy()
+        end
+        optionFrames = {}
+        noResultsLabel = nil
+        local query = normalizeSearchText(filter)
+        local normalizedQuery = string.lower(query)
+        for index, opt in ipairs(optionsList) do
+            local optionText = tostring(opt)
+            local normalizedOption = string.lower(optionText)
+            if normalizedQuery == "" or string.find(normalizedOption, normalizedQuery, 1, true) then
                 local optFrame = Instance.new("Frame")
                 optFrame.Name = "DropdownOption"
                 optFrame.Parent = container
@@ -1718,30 +1761,37 @@ function ControlFactory:createDropdown(options)
                 optFrame.BackgroundTransparency = self.theme.ElementDarkTransparency
                 optFrame.Size = UDim2.new(1, 0, 0, self.theme.DropdownItemHeight)
                 optFrame.BorderSizePixel = 0
+                optFrame.LayoutOrder = index
+                addCorner(optFrame, math.max(self.theme.CornerRadius - 3, 6))
                 local optBtn = Instance.new("TextButton")
                 optBtn.Parent = optFrame
-                optBtn.BackgroundTransparency = 1
-                optBtn.Size = UDim2.new(1, 0, 1, 0)
+                optBtn.BackgroundColor3 = self.theme.ElementDark
+                optBtn.BackgroundTransparency = 0.46
+                optBtn.Size = UDim2.new(1, -16, 1, 0)
+                optBtn.Position = UDim2.new(0, 8, 0, 0)
                 optBtn.Font = self.theme.Font
-                optBtn.Text = "   " .. opt
+                optBtn.Text = optionText
                 optBtn.TextColor3 = self.theme.TextMuted
                 optBtn.TextSize = self.theme.TextSizeSmall
                 optBtn.TextXAlignment = Enum.TextXAlignment.Left
+                optBtn.TextTruncate = Enum.TextTruncate.AtEnd
+                addCorner(optBtn, math.max(self.theme.CornerRadius - 4, 5))
                 addHoverEffect(optBtn, self.theme.ElementDark, self.theme.HoverColor, false)
                 if multi then
                     local check = Instance.new("Frame")
                     check.Name = "DropdownCheck"
                     check.Parent = optFrame
+                    check.AnchorPoint = Vector2.new(1, 0.5)
                     check.BackgroundColor3 = selected[opt] and self.theme.Accent or self.theme.Element
-                    check.Position = UDim2.new(1, -28, 0.5, -10)
+                    check.Position = UDim2.new(1, -8, 0.5, 0)
                     check.Size = UDim2.new(0, 20, 0, 20)
                     addCorner(check, 6)
-                    addStroke(check, self.theme.StrokeColor)
+                    addStroke(check, self.theme.StrokeColor, 1, self.theme.StrokeTransparency)
                 end
                 self:track(optBtn.MouseButton1Click:Connect(function()
                     if multi then
                         selected[opt] = not selected[opt]
-                        local checkFrame = optFrame:FindFirstChildWhichIsA("Frame")
+                        local checkFrame = optFrame:FindFirstChild("DropdownCheck")
                         if checkFrame then
                             createTween(checkFrame, 0.2, {BackgroundColor3 = selected[opt] and self.theme.Accent or self.theme.Element})
                         end
@@ -1763,24 +1813,39 @@ function ControlFactory:createDropdown(options)
                         if self.configHandler then self.configHandler:Set(flag, selected) end
                     end
                 end))
-                table.insert(optionButtons, optBtn)
+                table.insert(optionFrames, optFrame)
             end
         end
-        container.CanvasSize = UDim2.new(0, 0, 0, #optionButtons * self.theme.DropdownItemHeight + (searchable and 40 or 8))
+        if #optionFrames == 0 then
+            noResultsLabel = Instance.new("TextLabel")
+            noResultsLabel.Name = "DropdownEmptyState"
+            noResultsLabel.Parent = container
+            noResultsLabel.BackgroundTransparency = 1
+            noResultsLabel.Size = UDim2.new(1, 0, 0, self.theme.DropdownItemHeight)
+            noResultsLabel.Font = self.theme.Font
+            noResultsLabel.Text = normalizedQuery == "" and localizedValue("@NoOptions") or localizedValue("@NoResults")
+            noResultsLabel.TextColor3 = self.theme.TextMuted
+            noResultsLabel.TextSize = self.theme.TextSizeSmall
+            noResultsLabel.TextXAlignment = Enum.TextXAlignment.Center
+            noResultsLabel.TextYAlignment = Enum.TextYAlignment.Center
+            noResultsLabel.LayoutOrder = 100000
+        end
+        contentHeight = getContentHeight(#optionFrames)
+        container.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+        container.CanvasPosition = Vector2.new(0, 0)
         if dropdownOverlay and dropdownOverlay.Opened then
-            -- Search changes the number of visible rows. Reposition and
-            -- resize immediately instead of waiting for another click.
             dropdownOverlay:UpdatePosition()
+        elseif isOpen then
+            local expandedHeight = math.min(contentHeight, 200)
+            createTween(frame, 0.18, {Size = UDim2.new(1, 0, 0, self.theme.DropdownHeight + expandedHeight)})
+            container.Size = UDim2.new(1, 0, 0, expandedHeight)
         end
     end
     rebuild()
-    if searchable then
-        local searchBox = container:FindFirstChildWhichIsA("TextBox")
-        if searchBox then
-            self:track(searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-                rebuild(searchBox.Text)
-            end))
-        end
+    if searchBox then
+        self:track(searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+            rebuild(searchBox.Text)
+        end))
     end
     if self.overlayManager then
         dropdownOverlay = self.overlayManager:Create({
@@ -1794,7 +1859,12 @@ function ControlFactory:createDropdown(options)
             MaxWidth = 520,
             MaxHeight = 200,
             HeightProvider = function()
-                return math.min(#optionButtons * self.theme.DropdownItemHeight + (searchable and 40 or 8), 200)
+                return math.min(contentHeight, 200)
+            end,
+            OnOpen = function()
+                isOpen = true
+                container.CanvasPosition = Vector2.new(0, 0)
+                createTween(icon, 0.18, {Rotation = 180})
             end,
             OnClose = function()
                 isOpen = false
@@ -1809,9 +1879,8 @@ function ControlFactory:createDropdown(options)
             if dropdownOverlay then
                 dropdownOverlay:Open()
             else
-                local expandedHeight = math.min(#optionButtons * self.theme.DropdownItemHeight + (searchable and 40 or 8), 200)
-                local targetHeight = self.theme.DropdownHeight + expandedHeight
-                createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, targetHeight)})
+                local expandedHeight = math.min(contentHeight, 200)
+                createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.DropdownHeight + expandedHeight)})
                 container.Size = UDim2.new(1, 0, 0, expandedHeight)
             end
             createTween(icon, 0.18, {Rotation = 180})
@@ -1828,38 +1897,46 @@ function ControlFactory:createDropdown(options)
     flagObj = {
         GetValue = function()
             if multi then
-                local res = {}
-                for k,v in pairs(selected) do if v then table.insert(res, k) end end
-                return res
-            else
-                return selected
+                local result = {}
+                for k, v in pairs(selected) do
+                    if v then table.insert(result, k) end
+                end
+                return result
             end
+            return selected
         end,
         SetValue = function(_, v)
             if multi then
                 selected = {}
-                if type(v) == "table" then for _,x in ipairs(v) do selected[x] = true end end
-            else
-                if table.find(optionsList, v) then selected = v end
+                if type(v) == "table" then
+                    for _, x in ipairs(v) do
+                        if table.find(optionsList, x) then selected[x] = true end
+                    end
+                end
+            elseif table.find(optionsList, v) then
+                selected = v
             end
             updateButtonText()
-            rebuild()
+            rebuild(searchBox and searchBox.Text or "")
             pcall(options.Callback, v)
             if self.configHandler then self.configHandler:Set(flag, flagObj:GetValue()) end
         end,
         AddOption = function(_, opt)
             if not table.find(optionsList, opt) then
                 table.insert(optionsList, opt)
-                rebuild()
+                rebuild(searchBox and searchBox.Text or "")
             end
         end,
         RemoveOption = function(_, opt)
             local idx = table.find(optionsList, opt)
             if idx then
                 table.remove(optionsList, idx)
-                if multi then selected[opt] = nil
-                elseif selected == opt then selected = "" end
-                rebuild()
+                if multi then
+                    selected[opt] = nil
+                elseif selected == opt then
+                    selected = ""
+                end
+                rebuild(searchBox and searchBox.Text or "")
                 updateButtonText()
                 if self.configHandler then self.configHandler:Set(flag, flagObj:GetValue()) end
             end
@@ -1867,20 +1944,22 @@ function ControlFactory:createDropdown(options)
         ClearOptions = function()
             optionsList = {}
             selected = multi and {} or ""
-            rebuild()
+            rebuild(searchBox and searchBox.Text or "")
             updateButtonText()
             if self.configHandler then self.configHandler:Set(flag, flagObj:GetValue()) end
         end,
         Select = function(_, val)
             if multi then
                 if type(val) == "table" then
-                    for _,x in ipairs(val) do selected[x] = true end
+                    for _, x in ipairs(val) do
+                        if table.find(optionsList, x) then selected[x] = true end
+                    end
                 end
-            else
-                if table.find(optionsList, val) then selected = val end
+            elseif table.find(optionsList, val) then
+                selected = val
             end
             updateButtonText()
-            rebuild()
+            rebuild(searchBox and searchBox.Text or "")
             pcall(options.Callback, val)
             if self.configHandler then self.configHandler:Set(flag, flagObj:GetValue()) end
         end
@@ -1890,15 +1969,11 @@ function ControlFactory:createDropdown(options)
         if multi then
             local hasSelected = false
             for _, v in pairs(selected) do
-                if v then hasSelected = true; break end
+                if v then hasSelected = true break end
             end
-            if hasSelected then
-                pcall(options.Callback, flagObj:GetValue())
-            end
-        else
-            if selected ~= "" then
-                pcall(options.Callback, selected)
-            end
+            if hasSelected then pcall(options.Callback, flagObj:GetValue()) end
+        elseif selected ~= "" then
+            pcall(options.Callback, selected)
         end
     end
     table.insert(self.createdControls, {type = "dropdown", frame = frame, btn = btn, icon = icon, container = container, rebuild = rebuild, isSelected = function(opt) return multi and selected[opt] == true end})
@@ -1910,9 +1985,13 @@ function ControlFactory:createChecklist(options)
     local selected = {}
     local savedVal = self.configHandler and self.configHandler:Get(flag)
     if savedVal ~= nil and type(savedVal) == "table" then
-        for _, v in ipairs(savedVal) do selected[v] = true end
-    elseif options.CurrentSelected then
-        for _, v in ipairs(options.CurrentSelected) do selected[v] = true end
+        for _, v in ipairs(savedVal) do
+            if table.find(optionsList, v) then selected[v] = true end
+        end
+    elseif type(options.CurrentSelected) == "table" then
+        for _, v in ipairs(options.CurrentSelected) do
+            if table.find(optionsList, v) then selected[v] = true end
+        end
     end
     local frame = Instance.new("Frame")
     frame.Parent = self.parent
@@ -1922,8 +2001,14 @@ function ControlFactory:createChecklist(options)
     frame.ClipsDescendants = true
     addCorner(frame, self.theme.CornerRadius)
     addStroke(frame, self.theme.StrokeColor, 1, self.theme.StrokeTransparency)
+    local header = Instance.new("Frame")
+    header.Name = "ChecklistHeader"
+    header.Parent = frame
+    header.BackgroundTransparency = 1
+    header.Size = UDim2.new(1, 0, 0, self.theme.ChecklistHeight)
+    header.ZIndex = 2
     local btn = Instance.new("TextButton")
-    btn.Parent = frame
+    btn.Parent = header
     btn.BackgroundTransparency = 1
     btn.Size = UDim2.new(1, -(self.theme.PaddingHorizontal * 2 + 92), 0, self.theme.ChecklistHeight)
     btn.Font = self.theme.Font
@@ -1936,7 +2021,7 @@ function ControlFactory:createChecklist(options)
     btn.TextTruncate = Enum.TextTruncate.AtEnd
     btn.Position = UDim2.new(0, self.theme.PaddingHorizontal, 0, 0)
     local countLabel = Instance.new("TextLabel")
-    countLabel.Parent = frame
+    countLabel.Parent = header
     countLabel.BackgroundTransparency = 1
     countLabel.Position = UDim2.new(1, -80, 0.5, -10)
     countLabel.Size = UDim2.new(0, 60, 0, 20)
@@ -1947,6 +2032,7 @@ function ControlFactory:createChecklist(options)
     countLabel.TextXAlignment = Enum.TextXAlignment.Right
     local icon = createChevron(btn, self.theme.TextMuted)
     local container = Instance.new("ScrollingFrame")
+    container.Name = "ChecklistContent"
     container.Parent = frame
     container.BackgroundColor3 = self.theme.ElementDark
     container.BackgroundTransparency = self.theme.ElementDarkTransparency
@@ -1956,18 +2042,34 @@ function ControlFactory:createChecklist(options)
     container.ScrollBarThickness = 4
     container.ScrollBarImageColor3 = self.theme.Accent
     container.CanvasSize = UDim2.new(0, 0, 0, 0)
+    container.ScrollingDirection = Enum.ScrollingDirection.Y
+    container.Active = true
+    addCorner(container, self.theme.CornerRadius)
+    addStroke(container, self.theme.StrokeColor, 1, self.theme.StrokeTransparency)
+    local containerPadding = Instance.new("UIPadding")
+    containerPadding.Parent = container
+    containerPadding.PaddingTop = UDim.new(0, 6)
+    containerPadding.PaddingBottom = UDim.new(0, 6)
+    containerPadding.PaddingLeft = UDim.new(0, 6)
+    containerPadding.PaddingRight = UDim.new(0, 6)
     local layout = Instance.new("UIListLayout")
     layout.Parent = container
     layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.Padding = UDim.new(0, 2)
     local function getSelectedValues()
         local result = {}
-        for k, v in pairs(selected) do if v then table.insert(result, k) end end
+        for k, v in pairs(selected) do
+            if v then table.insert(result, k) end
+        end
+        table.sort(result, function(a, b) return tostring(a) < tostring(b) end)
         return result
     end
     local function getSelectedCountText()
         local count = 0
-        for _, v in pairs(selected) do if v then count = count + 1 end end
+        for _, v in pairs(selected) do
+            if v then count = count + 1 end
+        end
         return count .. " " .. localizedValue("@Selected")
     end
     local function updateSelectedCount()
@@ -1976,26 +2078,39 @@ function ControlFactory:createChecklist(options)
         if self.configHandler then self.configHandler:Set(flag, getSelectedValues()) end
     end
     bindLocalizedResolver(countLabel, "Text", getSelectedCountText)
+    local isOpen = false
+    local checklistOverlay
+    local contentHeight = 0
+    local function getContentHeight()
+        local rowCount = math.max(#optionsList, 1)
+        local gaps = math.max(rowCount - 1, 0) * 2
+        return 12 + rowCount * self.theme.ChecklistItemHeight + gaps
+    end
     local function rebuild()
         for _, child in ipairs(container:GetChildren()) do
-            if child:IsA("Frame") then child:Destroy() end
+            if child:IsA("Frame") and child.Name == "ChecklistRow" then
+                child:Destroy()
+            end
         end
-        for _, opt in ipairs(optionsList) do
+        for index, opt in ipairs(optionsList) do
             local row = Instance.new("Frame")
+            row.Name = "ChecklistRow"
             row.Parent = container
             row.BackgroundColor3 = self.theme.ElementDark
             row.BackgroundTransparency = self.theme.ElementDarkTransparency
             row.BorderSizePixel = 0
             row.Size = UDim2.new(1, 0, 0, self.theme.ChecklistItemHeight)
+            row.LayoutOrder = index
+            addCorner(row, math.max(self.theme.CornerRadius - 3, 6))
             local toggleOuter = Instance.new("Frame")
             toggleOuter.Name = "ChecklistOuter"
             toggleOuter.Parent = row
             toggleOuter.BackgroundColor3 = self.theme.Element
             toggleOuter.BackgroundTransparency = self.theme.ElementTransparency
-            toggleOuter.Position = UDim2.new(0, self.theme.PaddingHorizontal, 0.5, -10)
+            toggleOuter.Position = UDim2.new(0, 8, 0.5, -10)
             toggleOuter.Size = UDim2.new(0, 20, 0, 20)
             addCorner(toggleOuter, 6)
-            addStroke(toggleOuter, self.theme.StrokeColor)
+            addStroke(toggleOuter, self.theme.StrokeColor, 1, self.theme.StrokeTransparency)
             local toggleInner = Instance.new("Frame")
             toggleInner.Name = "ToggleInner"
             toggleInner.Parent = toggleOuter
@@ -2006,55 +2121,113 @@ function ControlFactory:createChecklist(options)
             local optLabel = Instance.new("TextLabel")
             optLabel.Parent = row
             optLabel.BackgroundTransparency = 1
-            optLabel.Position = UDim2.new(0, self.theme.PaddingHorizontal + 32, 0.5, -10)
-            optLabel.Size = UDim2.new(1, -self.theme.PaddingHorizontal - 40, 0, 20)
+            optLabel.Position = UDim2.new(0, 38, 0, 0)
+            optLabel.Size = UDim2.new(1, -50, 1, 0)
             optLabel.Font = self.theme.Font
-            optLabel.Text = opt
+            optLabel.Text = tostring(opt)
             optLabel.TextColor3 = self.theme.TextMuted
             optLabel.TextSize = self.theme.TextSizeSmall
             optLabel.TextXAlignment = Enum.TextXAlignment.Left
+            optLabel.TextTruncate = Enum.TextTruncate.AtEnd
             local clickBtn = Instance.new("TextButton")
             clickBtn.Parent = row
             clickBtn.BackgroundTransparency = 1
             clickBtn.Size = UDim2.new(1, 0, 1, 0)
             clickBtn.Text = ""
-            clickBtn.MouseButton1Click:Connect(function()
+            self:track(clickBtn.MouseButton1Click:Connect(function()
                 selected[opt] = not selected[opt]
                 createTween(toggleInner, 0.2, {
                     BackgroundColor3 = selected[opt] and self.theme.Accent or self.theme.TextMuted,
                     Position = selected[opt] and UDim2.new(0.5, -6, 0.5, -6) or UDim2.new(0, 3, 0.5, -6)
                 })
                 updateSelectedCount()
-            end)
+            end))
         end
-        container.CanvasSize = UDim2.new(0, 0, 0, #optionsList * self.theme.ChecklistItemHeight + 8)
+        if #optionsList == 0 then
+            local emptyLabel = Instance.new("TextLabel")
+            emptyLabel.Name = "ChecklistEmptyState"
+            emptyLabel.Parent = container
+            emptyLabel.BackgroundTransparency = 1
+            emptyLabel.Size = UDim2.new(1, 0, 0, self.theme.ChecklistItemHeight)
+            emptyLabel.Font = self.theme.Font
+            emptyLabel.Text = localizedValue("@NoOptions")
+            emptyLabel.TextColor3 = self.theme.TextMuted
+            emptyLabel.TextSize = self.theme.TextSizeSmall
+            emptyLabel.TextXAlignment = Enum.TextXAlignment.Center
+            emptyLabel.TextYAlignment = Enum.TextYAlignment.Center
+            emptyLabel.LayoutOrder = 1
+        end
+        contentHeight = getContentHeight()
+        container.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+        container.CanvasPosition = Vector2.new(0, 0)
         updateSelectedCount()
+        if checklistOverlay and checklistOverlay.Opened then
+            checklistOverlay:UpdatePosition()
+        elseif isOpen then
+            local expandedHeight = math.min(contentHeight, 220)
+            createTween(frame, 0.18, {Size = UDim2.new(1, 0, 0, self.theme.ChecklistHeight + expandedHeight)})
+            container.Size = UDim2.new(1, 0, 0, expandedHeight)
+        end
     end
     rebuild()
-    local isOpen = false
+    if self.overlayManager then
+        checklistOverlay = self.overlayManager:Create({
+            Name = "ChecklistOverlay",
+            Kind = "Checklist",
+            Anchor = header,
+            WidthProvider = function()
+                return frame.AbsoluteSize.X
+            end,
+            MinWidth = 220,
+            MaxWidth = 520,
+            MaxHeight = 220,
+            HeightProvider = function()
+                return math.min(contentHeight, 220)
+            end,
+            OnOpen = function()
+                isOpen = true
+                container.CanvasPosition = Vector2.new(0, 0)
+                createTween(icon, 0.18, {Rotation = 180})
+            end,
+            OnClose = function()
+                isOpen = false
+                createTween(icon, 0.18, {Rotation = 0})
+            end,
+        })
+        checklistOverlay:SetContent(container)
+    end
     local connection = btn.MouseButton1Click:Connect(function()
         isOpen = not isOpen
         if isOpen then
-            local expandedHeight = math.min(#optionsList * self.theme.ChecklistItemHeight + 8, 220)
-            local targetHeight = self.theme.ChecklistHeight + expandedHeight
-            createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, targetHeight)})
-            container.Size = UDim2.new(1, 0, 0, expandedHeight)
+            if checklistOverlay then
+                checklistOverlay:Open()
+            else
+                local expandedHeight = math.min(contentHeight, 220)
+                createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.ChecklistHeight + expandedHeight)})
+                container.Size = UDim2.new(1, 0, 0, expandedHeight)
+            end
             createTween(icon, 0.18, {Rotation = 180})
         else
-            createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.ChecklistHeight)})
-            container.Size = UDim2.new(1, 0, 0, 0)
+            if checklistOverlay then
+                checklistOverlay:Close()
+            else
+                createTween(frame, 0.25, {Size = UDim2.new(1, 0, 0, self.theme.ChecklistHeight)})
+                container.Size = UDim2.new(1, 0, 0, 0)
+            end
             createTween(icon, 0.18, {Rotation = 0})
         end
     end)
     local flagObj = {
         GetValue = function()
-            local result = {}
-            for k, v in pairs(selected) do if v then table.insert(result, k) end end
-            return result
+            return getSelectedValues()
         end,
         SetValue = function(_, tbl)
             selected = {}
-            for _, x in ipairs(tbl) do selected[x] = true end
+            if type(tbl) == "table" then
+                for _, x in ipairs(tbl) do
+                    if table.find(optionsList, x) then selected[x] = true end
+                end
+            end
             rebuild()
         end,
         AddOption = function(_, opt)
@@ -3624,8 +3797,6 @@ function SynergyUI:CreateWindow(options)
         end
     end))
     addConnection(minBtn.MouseButton1Click:Connect(function()
-        -- When the floating restore button is enabled, minimizing should hide
-        -- the entire window instead of leaving the top bar visible.
         if window.RestoreButton then
             window:Close()
             return
@@ -3717,8 +3888,6 @@ function SynergyUI:CreateWindow(options)
         if window:IsOpen() then return window:Close() end
         return window:Open()
     end
-    -- Optional floating restore button. It lives in its own ScreenGui so it
-    -- remains visible while the main window's ScreenGui is disabled.
     local buttonOption = options.Button
     local buttonEnabled = buttonOption == true or buttonOption == "yes" or buttonOption == "Yes" or buttonOption == "YES"
     local buttonAsset = normalizeAssetId(options.ButtonAsset or options.ButtonImage or options.ButtonId or options.MinimizeButtonAsset)
@@ -4328,9 +4497,6 @@ function SynergyUI:CreateWindow(options)
         tabBtn.Text = ""
         tabBtn.Position = UDim2.new(0, window.Theme.PaddingHorizontal + 10, 0, 0)
         tabBtn.ZIndex = 1
-
-        -- Superficie interior redondeada para tabs, inspirada en la jerarquÃ­a
-        -- de capas de WindUI, pero implementada con primitives nativas.
         local tabSurface = Instance.new("Frame")
         tabSurface.Name = "TabSurface"
         tabSurface.Parent = tabBtn
